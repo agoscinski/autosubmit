@@ -81,6 +81,7 @@ from autosubmit.notifications.notifier import Notifier
 from autosubmit.platforms.paramiko_submitter import ParamikoSubmitter
 from autosubmit.platforms.platform import Platform
 from autosubmit.platforms.submitter import Submitter
+from autosubmit.generators import Engine, get_engine_generator
 from log.log import Log, AutosubmitError, AutosubmitCritical
 
 dialog = None
@@ -191,11 +192,10 @@ class Autosubmit:
                 description='Main executable for autosubmit. ')
             parser.add_argument('-v', '--version', dest='version', action='store_true')
 
-            parser.add_argument('-lf', '--logfile', choices=('NO_LOG', 'INFO', 'WARNING', 'DEBUG'),
-                                default='DEBUG', type=str,
+            log_levels = ('NO_LOG', 'INFO', 'WARNING', 'DEBUG', 'ERROR')
+            parser.add_argument('-lf', '--logfile', choices=log_levels, default='DEBUG', type=str,
                                 help="sets file's log level.")
-            parser.add_argument('-lc', '--logconsole', choices=('NO_LOG', 'INFO', 'WARNING', 'DEBUG'),
-                                default='WARNING', type=str,
+            parser.add_argument('-lc', '--logconsole', choices=log_levels, default='WARNING', type=str,
                                 help="sets console's log level")
 
             subparsers = parser.add_subparsers(dest='command')
@@ -313,9 +313,9 @@ class Autosubmit:
             subparser.add_argument('expid', help='experiment identifier')
             subparser.add_argument('-ft', '--filter_type', type=str, help='Select the job type to filter '
                                                                           'the list of jobs')
-            subparser.add_argument('-fp', '--filter_period', type=int, help='Select the period to filter jobs '
-                                                                            'from current time to the past '
-                                                                            'in number of hours back')
+            subparser.add_argument('-fp', '--filter_period', type=int,
+                                   help='Select the period to filter jobs from current time to the past in'
+                                        'number of hours back (must be greater than 0)')
             subparser.add_argument('-o', '--output', choices=('pdf', 'png', 'ps', 'svg'), default='pdf',
                                    help='type of output for generated plot')
             subparser.add_argument('--section_summary', action='store_true', default=False,
@@ -699,6 +699,16 @@ class Autosubmit:
                                 help='Select the status (one or more) to filter the list of jobs.')
             subparser.add_argument('-t', '--target', type=str, default="FAILED", metavar='STATUS',
                                 help='Final status of killed jobs. Default is FAILED.')
+            subparser = subparsers.add_parser(
+                'generate', description='Generate a workflow definition for a different workflow engine',
+                argument_default=argparse.SUPPRESS)
+            subparser.add_argument('expid', help='experiment identifier')
+            subsubparser = subparser.add_subparsers(title="engines", dest='engine', required=True, description='Workflow engine identifier')
+            for engine in Engine:
+                generator_class = get_engine_generator(engine)
+                parser_engine = subsubparser.add_parser(engine.value, help=f"{generator_class.get_engine_name()}")
+                generator_class.add_parse_args(parser_engine)
+
             args, unknown = parser.parse_known_args()
             if args.version:
                 Log.info(Autosubmit.autosubmit_version)
@@ -808,15 +818,18 @@ class Autosubmit:
             return Autosubmit.cat_log(args.ID, args.file, args.mode, args.inspect)
         elif args.command == 'stop':
             return Autosubmit.stop(args.expid, args.force, args.all, args.force_all, args.cancel, args.filter_status, args.target)
+        elif args.command == 'generate':
+            return Autosubmit.generate_workflow(args.expid, Engine[args.engine], args)
+
     @staticmethod
     def _init_logs(args, console_level='INFO', log_level='DEBUG', expid='None'):
         Log.set_console_level(console_level)
         if args.command != "configure":
             if not BasicConfig.CONFIG_FILE_FOUND:
-                raise AutosubmitCritical('No configuration file(autosubmitrc) found in this filesystem. Please run "autosubmit configure" first.',7006)
+                raise AutosubmitCritical('No configuration file(autosubmitrc) found in this filesystem. Please run "autosubmit configure" first.', 7006)
             if args.command != "install":
                 if not os.path.exists(BasicConfig.DB_PATH):
-                    raise AutosubmitCritical('Experiments database not found in this filesystem. Please run "autosubmit install" first.',7072)
+                    raise AutosubmitCritical('Experiments database not found in this filesystem. Please run "autosubmit install" first.', 7072)
                 else:
                     permissions = os.access(BasicConfig.DB_PATH, os.R_OK)  # Check for read access
                     if not permissions:
@@ -826,8 +839,6 @@ class Autosubmit:
                     if not permissions:
                         raise AutosubmitCritical(f'Experiments database {BasicConfig.DB_PATH} not writable.'
                                                  f' Please check permissions.',7007)
-
-
 
         expid_less = ["expid", "describe", "testcase", "install", "-v",
                       "readme", "changelog", "configure", "unarchive",
@@ -3374,7 +3385,7 @@ class Autosubmit:
                                      7040, str(e))
 
     @staticmethod
-    def describe(input_experiment_list="*",get_from_user=""):
+    def describe(input_experiment_list="*", get_from_user=""):
         """
         Show details for specified experiment
 
@@ -3389,22 +3400,22 @@ class Autosubmit:
         not_described_experiments = []
         if get_from_user == "*" or get_from_user == "":
             get_from_user = pwd.getpwuid(os.getuid())[0]
-        user =""
-        created=""
-        model=""
-        branch=""
-        hpc=""
+        user = ""
+        created= ""
+        model = ""
+        branch = ""
+        hpc = ""
         if ',' in experiments_ids:
             experiments_ids = experiments_ids.split(',')
         elif '*' in experiments_ids:
             experiments_ids = []
             basic_conf = BasicConfig()
             for f in Path(basic_conf.LOCAL_ROOT_DIR).glob("????"):
-                try:
+                # If it reaches there it means that f.owner() doesn't exist
+                # anymore( owner is an id) so we just skip it and continue.
+                with suppress(Exception):
                     if f.is_dir() and f.owner() == get_from_user:
                         experiments_ids.append(f.name)
-                except Exception:
-                    pass # if it reaches there it means that f.owner() doesn't exist anymore( owner is an id) so we just skip it and continue
         else:
             experiments_ids = experiments_ids.split(' ')
         for experiment_id in experiments_ids:
@@ -3412,8 +3423,7 @@ class Autosubmit:
                 experiment_id = experiment_id.strip(" ")
                 exp_path = os.path.join(BasicConfig.LOCAL_ROOT_DIR, experiment_id)
 
-                as_conf = AutosubmitConfig(
-                    experiment_id, BasicConfig, YAMLParserFactory())
+                as_conf = AutosubmitConfig(experiment_id, BasicConfig, YAMLParserFactory())
                 as_conf.check_conf_files(False,no_log=True)
                 user = os.stat(as_conf.conf_folder_yaml).st_uid
                 try:
@@ -3423,8 +3433,7 @@ class Autosubmit:
                         "The user does not exist anymore in the system, using id instead")
                     continue
 
-                created = datetime.datetime.fromtimestamp(
-                    os.path.getmtime(as_conf.conf_folder_yaml))
+                created = datetime.datetime.fromtimestamp(os.path.getmtime(as_conf.conf_folder_yaml))
 
                 if as_conf.get_svn_project_url():
                     model = as_conf.get_svn_project_url()
@@ -3452,10 +3461,11 @@ class Autosubmit:
                 Log.result("Branch: {0}", branch)
                 Log.result("HPC: {0}", hpc)
                 Log.result("Description: {0}", description[0][0])
-            except BaseException as e:
+            except Exception:
                 not_described_experiments.append(experiment_id)
         if len(not_described_experiments) > 0:
-            Log.printlog(f"Could not describe the following experiments:\n{not_described_experiments}",Log.WARNING)
+            Log.printlog(f"Could not describe the following experiments:\n"
+                         f"{not_described_experiments}", Log.WARNING)
         if len(experiments_ids) == 1:
             # for backward compatibility or GUI
             return user, created, model, branch, hpc
@@ -5912,3 +5922,46 @@ class Autosubmit:
             if cancel:
                 job_list, _, _, _, _, _, _, _ = Autosubmit.prepare_run(expid, check_scripts=False)
                 cancel_jobs(job_list, active_jobs_filter=current_status, target_status=status)
+
+    @staticmethod
+    def generate_workflow(expid: str, engine: Engine, args: argparse.Namespace) -> None:
+        """Generate the workflow configuration for a different backend engine."""
+        Log.info(f'Generate workflow configuration for {engine}')
+
+        try:
+            Log.info("Getting job list...")
+            as_conf = AutosubmitConfig(expid, BasicConfig, YAMLParserFactory())
+            as_conf.check_conf_files(False)
+
+            submitter = Autosubmit._get_submitter(as_conf)
+            submitter.load_platforms(as_conf)
+            if len(submitter.platforms) == 0:
+                raise ValueError('Missing platform!')
+
+            packages_persistence = JobPackagePersistence(expid)
+            job_list = Autosubmit.load_job_list(expid, as_conf, notransitive=False, monitor=False)
+
+            Autosubmit._load_parameters(as_conf, job_list, submitter.platforms)
+
+            hpc_architecture = as_conf.get_platform()
+            for job in job_list.get_job_list():
+                if job.platform_name is None or job.platform_name == '':
+                    job.platform_name = hpc_architecture
+                job.platform = submitter.platforms[job.platform_name]
+                job.update_parameters(as_conf, job_list.parameters)
+
+            job_list.check_scripts(as_conf)
+        except AutosubmitError as e:
+            raise AutosubmitCritical(e.message, e.code, e.trace)
+        except AutosubmitCritical as e:
+            raise
+        except BaseException as e:
+            raise AutosubmitCritical("Error while checking the configuration files or loading the job_list", 7040,
+                                     str(e))
+
+        generator_class = get_engine_generator(engine)
+        parser = argparse.ArgumentParser()
+        generator_class.add_parse_args(parser)
+        generator_input_keys = vars(parser.parse_args('')).keys()
+        generator_kwargs = {key: args.__getattribute__(key) for key in generator_input_keys} 
+        generator_class.generate(job_list, as_conf, **generator_kwargs)
