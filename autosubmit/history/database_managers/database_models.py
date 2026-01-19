@@ -32,15 +32,18 @@ ExperimentStatusRow = collections.namedtuple(
 ExperimentRow = collections.namedtuple('ExperimentRow', ["id", "name", "autosubmit_version", "description"])
 
 PragmaVersion = collections.namedtuple('PragmaVersion', ['version'])
-MaxCounterRow = collections.namedtuple('MaxCounter', ['maxcounter'])
+MaxCounter = collections.namedtuple('MaxCounter', ['maxcounter'])
+
 
 class RunningStatus:
   RUNNING = "RUNNING"
   NOT_RUNNING = "NOT RUNNING"
 
+
 class RowType:
     NORMAL = 2
     # PACKED = 2
+
 
 class RowStatus:
     INITIAL = 0
@@ -49,6 +52,7 @@ class RowStatus:
     FAULTY = 3
     CHANGED = 4
     PENDING_PROCESS = 5
+
 
 table_name_to_model = {
   "experiment" : ExperimentRow,

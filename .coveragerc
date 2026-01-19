@@ -4,7 +4,7 @@
 [run]
 branch = True
 cover_pylib = False
-concurrency = multiprocessing
+concurrency = thread,multiprocessing
 data_file = .coverage
 disable_warnings =
     trace-changed
@@ -14,9 +14,11 @@ disable_warnings =
     module-not-measured
 omit =
     tests/*
+    autosubmit/job/template/common.py
 parallel = True
 source = ./autosubmit
 timid = False
+sigterm = True
 
 [report]
 exclude_lines =
@@ -24,6 +26,7 @@ exclude_lines =
 
     # Don't complain if tests don't hit defensive assertion code:
     raise NotImplementedError
+    raise NotImplemented
     return NotImplemented
 
     # Ignore type checking code:
@@ -36,10 +39,14 @@ exclude_lines =
     # Ignore abstract methods
     @(abc\.)?abstractmethod
 
+    # Ignore pass statements
+    ^\s*pass\s*$
+
 fail_under=0
 ignore_errors = False
 omit =
     tests/*
+    autosubmit/job/template/common.py
 precision = 2
 show_missing = False
 skip_covered = False

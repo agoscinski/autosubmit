@@ -13,7 +13,7 @@ The Autosubmit code is hosted in GitHub. The Autosubmit Python package is availa
 .. important:: (SYSTEM) Graphviz version must be >= 2.38 except 2.40(not working). You can check the version using dot -v.
 .. important:: (SYSTEM) Pip version must be >= 24.0. You can check the version using pip -V.
 
-- Python dependencies: configobj>=5.0.6, argparse>=1.4.0 , python-dateutil>=2.8.2, matplotlib==3.4.3, numpy==1.21.6, py3dotplus>=1.1.0, pyparsing>=3.0.7, paramiko>=2.9.2, mock>=4.0.3, six>=1.10, portalocker>=2.3.2, networkx==2.6.3, requests>=2.27.1, bscearth.utils>=0.5.2, cryptography>=36.0.1, setuptools>=60.8.2, xlib>=0.21, pip>=22.0.3, ruamel.yaml, pythondialog, pytest, nose, coverage, PyNaCl==1.4.0, six>=1.10.0, requests, xlib, Pygments, packaging==19, typing>=3.7, autosubmitconfigparser
+- Python dependencies: configobj>=5.0.6, argparse>=1.4.0 , python-dateutil>=2.8.2, matplotlib==3.4.3, numpy==1.21.6, py3dotplus>=1.1.0, pyparsing>=3.0.7, paramiko>=2.9.2, mock>=4.0.3, six>=1.10, portalocker>=2.3.2, networkx==2.6.3, requests>=2.27.1, bscearth.utils>=0.5.2, cryptography>=36.0.1, setuptools>=60.8.2, xlib>=0.21, pip>=22.0.3, ruamel.yaml, pythondialog, pytest, nose, coverage, PyNaCl==1.4.0, six>=1.10.0, requests, xlib, Pygments, packaging==19, typing>=3.7
 
 .. important:: ``dot -v`` command should contain "dot", pdf, png, SVG, Xlib in the device section.
 
@@ -30,7 +30,9 @@ Or download, unpack and:
     pip install .
 
 .. hint::
-    To check if Autosubmit is installed, run ``autosubmit -v.`` This command will print Autosubmit's current version
+    To check if Autosubmit is installed, run ``autosubmit -v`` This command will print Autosubmit's current version
+
+.. runcmd:: autosubmit -v
 
 .. hint::
     To read Autosubmit's readme file, run ``autosubmit readme``
@@ -75,11 +77,11 @@ For a very quick test, you can follow the next instructions to configure and run
 
     # Quick-start
 
-    # Get expid
-    autosubmit expid -H "local" -d "Test exp in local."
+    # Get <EXPID>
+    autosubmit a000 -H "local" -d "Test exp in local."
 
     # Create with
-    # Since it was a new install, the expid will be a000
+    # Since it was a new install, the <EXPID> will be a000
     autosubmit create a000
 
     # In case you want to use a remote platform
@@ -117,7 +119,7 @@ If you don't have conda installed yet, we recommend following `Installing Minico
 
     # Download git
     apt install git -y -q
-    
+
     # Download autosubmit
     git clone https://github.com/BSC-ES/autosubmit.git -b v4.0.0b
     cd autosubmit
@@ -145,11 +147,11 @@ For a very quick test, you can follow the next instructions to configure and run
     autosubmit install
 
     # Quick-start
-    # Get expid
-    autosubmit expid -H "local" -d "Test exp in local."
+    # Get <EXPID>
+    autosubmit <EXPID> -H "local" -d "Test exp in local."
 
     # Create with
-    # Since it was a new install, the expid will be a000
+    # Since it was a new install, the <EXPID> will be a000
     autosubmit create a000
 
     # In case you want to use a remote platform
@@ -268,7 +270,7 @@ Mandatory parameters of /etc/autosubmit
     [local]
     path = <experiment_path>
 
-    # Global logs, logs without expid associated.
+    # Global logs, logs without <EXPID> associated.
     [globallogs]
     path = /home/dbeltran/autosubmit/logs
 
@@ -301,10 +303,10 @@ These parameters provide extra functionalities to Autosubmit.
 .. code-block:: ini
 
     [conf]
-    # Allows using a different jobs.yml default template on `autosubmit expid ``
-    jobs = <path_jobs>/jobs.yml
-    # Allows using a different platforms.yml default template on `autosubmit expid `
-    platforms = <path_platforms>platforms.yml> path to any jobs.yml
+    # Allows using a different jobs_<EXPID>.yml default template on `autosubmit expid ``
+    jobs = <path_jobs>/jobs_<EXPID>.yml
+    # Allows using a different platforms_<EXPID>.yml default template on `autosubmit expid `
+    platforms = <path_platforms>platforms_<EXPID>.yml> path to any jobs.yml
 
     # Autosubmit API includes extra information for some Autosubmit functions. It is optional to have access to it to use Autosubmit.
     [autosubmitapi]
@@ -358,4 +360,9 @@ As the last step, ensure to install the Autosubmit database. To do so, execute  
 
 This command will generate a blank database in the specified configuration path.
 
+Dependencies and licenses
+=========================
 
+The list below includes the runtime software used by Autosubmit and their licenses.
+
+.. dependencies_licenses::

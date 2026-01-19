@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional, Tuple
 
 import pytest
 
-from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmit.config.basicconfig import BasicConfig
 from test.regression.utils.common import create_database, init_expid
 
 PROFILE = False  # Enable/disable profiling ( speed up the tests )
@@ -60,7 +60,7 @@ def prepare_basic_config(current_tmpdir):
 
 
 @pytest.fixture
-def prepare_workflow_runs(current_tmpdir: Path) -> Path:
+def prepare_workflow_runs(current_tmpdir: Path) -> None:
     """
     factory creating path and directories for test execution
     :param current_tmpdir: mktemp
@@ -256,7 +256,7 @@ def test_workflows_dependencies(prepare_workflow_runs: Any, expid: str, current_
     add_new_test = False  # Enable when adding a new test
     show_workflow_plot = False  # Enable only for debugging purposes
     expids_to_plot = []
-    if expid.startswith("auto-monarch-op"):  # Modify only for debugging purposes
+    if expid.startswith("Destin"):  # Modify only for debugging purposes
         expids_to_plot.append(expid)
     profiler = cProfile.Profile()
 

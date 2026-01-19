@@ -17,8 +17,8 @@
 
 import pytest
 
+from autosubmit.log.log import AutosubmitCritical
 from autosubmit.platforms.paramiko_submitter import ParamikoSubmitter
-from log.log import AutosubmitCritical
 
 
 @pytest.mark.parametrize("config", [
@@ -73,6 +73,5 @@ from log.log import AutosubmitCritical
 def test_load_platforms(autosubmit_config, config):
     experiment_id = 'random-id'
     as_conf = autosubmit_config(experiment_id, config)
-    submitter = ParamikoSubmitter()
     with pytest.raises(AutosubmitCritical):
-        submitter.load_platforms(as_conf)
+        ParamikoSubmitter(as_conf=as_conf)

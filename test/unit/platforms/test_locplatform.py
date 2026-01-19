@@ -16,9 +16,9 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 """Unit tests for the Local Platform."""
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
@@ -70,7 +70,7 @@ def test_get_stat_file(count: int, stats_file_exists: bool, job_fail_count: int,
     if count == -1:
         filename = f"{job.stat_file}{job.fail_count}"
     else:
-        filename = job.name + '_STAT_{0}'.format(str(count))
+        filename = f'{job.name}_STAT_{str(count)}'
 
     if remote_file_exists:
         # Create fake remote stat file transferred.

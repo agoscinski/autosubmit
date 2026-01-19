@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Earth Sciences Department, BSC-CNS
+# Copyright 2015-2025 Earth Sciences Department, BSC-CNS
 #
 # This file is part of Autosubmit.
 #
@@ -16,21 +16,18 @@
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import math
-import os
 from typing import Dict, Optional, TYPE_CHECKING
 
 from bscearth.utils.date import date2str, chunk_end_date, chunk_start_date, subs_dates
 from networkx.classes import DiGraph
 
+from autosubmit.config.basicconfig import BasicConfig
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_package_persistence import JobPackagePersistence
-from autosubmit.platforms.paramiko_submitter import ParamikoSubmitter
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from log.log import Log, AutosubmitCritical
+from autosubmit.log.log import Log, AutosubmitCritical
 
 if TYPE_CHECKING:
     from autosubmit.job.job_list import JobList
-
 
 CALENDAR_UNITSIZE_ENUM = {
     "hour": 0,
@@ -40,30 +37,12 @@ CALENDAR_UNITSIZE_ENUM = {
 }
 
 
-def _get_submitter(as_conf) -> ParamikoSubmitter:
-    """
-    Returns the submitter corresponding to the communication defined on autosubmit's config file
-
-    :return: submitter
-    :rtype: Submitter
-    """
-    try:
-        communications_library = as_conf.get_communications_library()
-    except Exception as e:
-        communications_library = 'paramiko'
-    if communications_library == 'paramiko':
-        return ParamikoSubmitter()
-    else:
-        # only paramiko is available right now.
-        return ParamikoSubmitter()
-
-
 def is_leap_year(year) -> bool:
     """Determine whether a year is a leap year."""
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 
-def calendar_unitsize_isgreater(split_unit,chunk_unit) -> bool:
+def calendar_unitsize_isgreater(split_unit, chunk_unit) -> bool:
     """
     Check if the split unit is greater than the chunk unit
     :param split_unit:
@@ -75,7 +54,7 @@ def calendar_unitsize_isgreater(split_unit,chunk_unit) -> bool:
     try:
         return CALENDAR_UNITSIZE_ENUM[split_unit] > CALENDAR_UNITSIZE_ENUM[chunk_unit]
     except KeyError:
-        raise AutosubmitCritical(f"Invalid calendar unit size")
+        raise AutosubmitCritical("Invalid calendar unit size")
 
 
 def calendar_unitsize_getlowersize(unitsize) -> str:
@@ -110,8 +89,7 @@ def calendar_get_month_days(date_str) -> int:
         return 31
 
 
-def get_chunksize_in_hours(date_str,chunk_unit,chunk_length) -> int:
-
+def get_chunksize_in_hours(date_str, chunk_unit, chunk_length) -> int:
     if is_leap_year(int(date_str[0:4])):
         num_days_in_a_year = 366
     else:
@@ -152,7 +130,8 @@ def calendar_split_size_isvalid(date_str, split_size, split_unit,
         split_size_in_hours = split_size
 
     if split_size_in_hours != chunk_size_in_hours:
-        Log.warning(f"After calculations, the total sizes are: SplitSize*SplitUnitSize:{split_size_in_hours} hours, ChunkSize*ChunkUnitsize:{chunk_size_in_hours} hours.")
+        Log.warning(
+            f"After calculations, the total sizes are: SplitSize*SplitUnitSize:{split_size_in_hours} hours, ChunkSize*ChunkUnitsize:{chunk_size_in_hours} hours.")
     else:
         Log.debug(f"Split size in hours: {split_size_in_hours}, Chunk size in hours: {chunk_size_in_hours}")
     return split_size_in_hours <= chunk_size_in_hours
@@ -165,15 +144,18 @@ def calendar_chunk_section(exp_data, section, date, chunk) -> int:
     :param parameters:
     :return: int
     """
-    #next_auto_date = date
+    # next_auto_date = date
     splits = 0
     jobs_data = exp_data.get('JOBS', {})
-    split_unit = str(exp_data.get("EXPERIMENT", {}).get('SPLITSIZEUNIT', jobs_data.get(section,{}).get("SPLITSIZEUNIT", None))).lower()
+    split_unit = str(exp_data.get("EXPERIMENT", {}).get('SPLITSIZEUNIT',
+                                                        jobs_data.get(section, {}).get("SPLITSIZEUNIT", None))).lower()
     chunk_unit = str(exp_data.get("EXPERIMENT", {}).get('CHUNKSIZEUNIT', "day")).lower()
-    split_policy = str(exp_data.get("EXPERIMENT", {}).get('SPLITPOLICY', jobs_data.get(section,{}).get("SPLITPOLICY", "flexible"))).lower()
+    split_policy = str(exp_data.get("EXPERIMENT", {}).get('SPLITPOLICY', jobs_data.get(section, {}).get("SPLITPOLICY",
+                                                                                                        "flexible"))).lower()
     if chunk_unit == "hour":
-        raise AutosubmitCritical("Chunk unit is hour, Autosubmit doesn't support lower than hour splits. Please change the chunk unit to day or higher. Or don't use calendar splits.")
-    if jobs_data.get(section,{}).get("RUNNING","once") != "once":
+        raise AutosubmitCritical(
+            "Chunk unit is hour, Autosubmit doesn't support lower than hour splits. Please change the chunk unit to day or higher. Or don't use calendar splits.")
+    if jobs_data.get(section, {}).get("RUNNING", "once") != "once":
         chunk_length = int(exp_data.get("EXPERIMENT", {}).get('CHUNKSIZE', 1))
         cal = str(exp_data.get('CALENDAR', "standard")).lower()
         chunk_start = chunk_start_date(
@@ -183,8 +165,9 @@ def calendar_chunk_section(exp_data, section, date, chunk) -> int:
         run_days = subs_dates(chunk_start, chunk_end, cal)
         if split_unit == "none":
             split_unit = calendar_unitsize_getlowersize(chunk_unit)
-        if calendar_unitsize_isgreater(split_unit,chunk_unit):
-            raise AutosubmitCritical("Split unit is greater than chunk unit. Autosubmit doesn't support this configuration. Please change the split unit to day or lower. Or don't use calendar splits.")
+        if calendar_unitsize_isgreater(split_unit, chunk_unit):
+            raise AutosubmitCritical(
+                "Split unit is greater than chunk unit. Autosubmit doesn't support this configuration. Please change the split unit to day or lower. Or don't use calendar splits.")
         if split_unit == "hour":
             num_max_splits = run_days * 24
         elif split_unit == "month":
@@ -197,23 +180,26 @@ def calendar_chunk_section(exp_data, section, date, chunk) -> int:
         else:
             num_max_splits = run_days
         split_size = get_split_size(exp_data, section)
-        chunk_size_in_hours = get_chunksize_in_hours(date2str(chunk_start),chunk_unit,chunk_length)
+        chunk_size_in_hours = get_chunksize_in_hours(date2str(chunk_start), chunk_unit, chunk_length)
         if not calendar_split_size_isvalid(date2str(chunk_start), split_size, split_unit, chunk_size_in_hours):
-            raise AutosubmitCritical(f"Invalid split size for the calendar. The split size is {split_size} and the unit is {split_unit}.")
+            raise AutosubmitCritical(
+                f"Invalid split size for the calendar. The split size is {split_size} and the unit is {split_unit}.")
         splits = num_max_splits / split_size
         if not splits.is_integer() and split_policy == "flexible":
-            Log.warning(f"The number of splits:{num_max_splits}/{split_size} is not an integer. The number of splits will be rounded up due the flexible split policy.\n You can modify the SPLITPOLICY parameter in the section {section} to 'strict' to avoid this behavior.")
+            Log.warning(
+                f"The number of splits:{num_max_splits}/{split_size} is not an integer. The number of splits will be rounded up due the flexible split policy.\n You can modify the SPLITPOLICY parameter in the section {section} to 'strict' to avoid this behavior.")
         elif not splits.is_integer() and split_policy == "strict":
-            raise AutosubmitCritical(f"The number of splits is not an integer. Autosubmit can't continue.\nYou can modify the SPLITPOLICY parameter in the section {section} to 'flexible' to roundup the number. Or change the SPLITSIZE parameter to a value in which the division is an integer.")
+            raise AutosubmitCritical(
+                f"The number of splits is not an integer. Autosubmit can't continue.\nYou can modify the SPLITPOLICY parameter in the section {section} to 'flexible' to roundup the number. Or change the SPLITSIZE parameter to a value in which the division is an integer.")
         splits = math.ceil(splits)
         Log.info(f"For the section {section} with date:{date2str(chunk_start)} the number of splits is {splits}.")
     return splits
 
 
 def get_split_size_unit(data, section) -> str:
-    split_unit = str(data.get('JOBS',{}).get(section,{}).get('SPLITSIZEUNIT', "none")).lower()
+    split_unit = str(data.get('JOBS', {}).get(section, {}).get('SPLITSIZEUNIT', "none")).lower()
     if split_unit == "none":
-        split_unit = str(data.get('EXPERIMENT',{}).get("CHUNKSIZEUNIT", "day")).lower()
+        split_unit = str(data.get('EXPERIMENT', {}).get('CHUNKSIZEUNIT', "day")).lower()
         if split_unit == "year":
             return "month"
         elif split_unit == "month":
@@ -250,6 +236,7 @@ def transitive_reduction(graph) -> DiGraph:
         graph.nodes[u]["job"].add_children([graph.nodes[v]["job"] for v in graph[u]])
     return graph
 
+
 def get_job_package_code(expid: str, job_name: str) -> int:
     """
     Finds the package code and retrieves it. None if no package.
@@ -272,7 +259,7 @@ def get_job_package_code(expid: str, job_name: str) -> int:
                 if job_name == _job_name:
                     code = int(package_name.split("_")[-3])
                     return code
-    except Exception as e:
+    except Exception:
         pass
     return 0
 
@@ -283,7 +270,8 @@ class Dependency(object):
 
     """
 
-    def __init__(self, section, distance=None, running=None, sign=None, delay=-1, splits=None, relationships=None) -> None:
+    def __init__(self, section, distance=None, running=None, sign=None, delay=-1, splits=None,
+                 relationships=None) -> None:
         self.section = section
         self.distance = distance
         self.running = running
@@ -327,15 +315,11 @@ class SubJobManager(object):
         self.process_times()
 
     def process_index(self) -> None:
-        """
-        Builds a dictionary of jobname -> SubJob object. 
-        """
+        """Builds a dictionary of jobname -> SubJob object."""
         for subjob in self.subjobList:
             self.subjobindex[subjob.name] = subjob
 
     def process_times(self) -> None:
-        """
-        """
         if self.job_to_package and self.package_to_jobs:
             if self.current_structure and len(list(self.current_structure.keys())) > 0:
                 # Structure exists
@@ -407,7 +391,6 @@ class SubJobManager(object):
                     # Sizes of fixes
                     fixes_applied = dict()
                     if len(filtered) > 1:
-                        temp_index = 0
                         filtered[0].transit = 0
                         # Reverse for
                         for i in range(len(filtered) - 1, 0, -1):
@@ -426,19 +409,11 @@ class SubJobManager(object):
 
                         if positive > 1:
                             for i in range(0, len(filtered)):
-                                if filtered[i].transit >= 0:
-                                    temp_index = i
-                                    if i > 0:
-                                        # Only consider after the first job
-                                        filtered[i].queue = max(filtered[i].queue -
-                                                                filtered[i - 1].total, 0)
-                                        fixes_applied[filtered[i].name] = filtered[i - 1].total
-                                else:
+                                if i > 0:
+                                    # Only consider after the first job
                                     filtered[i].queue = max(filtered[i].queue -
-                                                            filtered[temp_index].total, 0)
-                                    fixes_applied[filtered[i].name] = filtered[temp_index].total
-                                # it is starting of level
-
+                                                            filtered[i - 1].total, 0)
+                                    fixes_applied[filtered[i].name] = filtered[i - 1].total
                     for sub in filtered:
                         self.subjobindex[sub.name].queue = sub.queue
                         # print("{} : {}".format(sub.name, sub.queue))
@@ -446,15 +421,11 @@ class SubJobManager(object):
                         self.subjobfixes[name] = fixes_applied[name]
 
     def get_subjoblist(self) -> set[SubJob]:
-        """
-        Returns the list of SubJob objects with their corrected queue times
-        in the case of jobs that belong to a wrapper.
-        """
+        """Returns the list of SubJob objects with their corrected queue times
+        in the case of jobs that belong to a wrapper. """
         return self.subjobList
 
     def get_collection_of_fixes_applied(self) -> Dict[str, int]:
-        """
-        """
         return self.subjobfixes
 
 

@@ -10,51 +10,27 @@ Launch Autosubmit with the command:
 
     # Add your key to ssh agent ( if encrypted )
     ssh-add ~/.ssh/id_rsa
-    autosubmit run EXPID
+    autosubmit run <EXPID>
 
-In the previous command output ``EXPID`` is the experiment identifier. The command
+In the previous command output ``<EXPID>`` is the experiment identifier. The command
 exits with ``0`` when the workflow finishes with no failed jobs, and with ``1``
 otherwise.
 
 Options:
-::
 
-    usage: autosubmit run [-h] [-nt] [-v] [-st START_TIME] [-sa START_AFTER] [-rom RUN_ONLY_MEMBERS] [-p] EXPID
-
-    runs specified experiment
-
-    positional arguments:
-      EXPID                 experiment identifier
-
-    options:
-      -h, --help            show this help message and exit
-      -nt, --notransitive   Disable transitive reduction
-      -v, --update_version  Update experiment version
-      -st START_TIME, --start_time START_TIME
-                            Sets the starting time for this experiment
-      -sa START_AFTER, --start_after START_AFTER
-                            Sets a experiment expid which completion will trigger the start of this experiment.
-      -rom RUN_ONLY_MEMBERS, --run_only_members RUN_ONLY_MEMBERS
-                            Sets members allowed on this run.
-      -p, --profile         Prints performance parameters of the execution of this command.
+.. runcmd:: autosubmit run -h
 
 
 Example:
 
-.. code-block:: bash
-
-    # Add your key to ssh agent ( if encrypted )
-    ssh-add ~/.ssh/id_rsa
-    autosubmit run cxxx
-
-.. important:: If the autosubmit version is set on ``autosubmit.yml`` it must match the actual autosubmit version
+.. important:: If the autosubmit version is set on ``autosubmit_<EXPID>.yml`` it must match the actual autosubmit version
 .. hint:: It is recommended to launch it in background and with ``nohup`` (continue running although the user who launched the process logs out).
 
 .. code-block:: bash
 
     # Add your key to ssh agent ( if encrypted )
     ssh-add ~/.ssh/id_rsa
-    nohup autosubmit run cxxx &
+    nohup autosubmit run <EXPID> &
 
 .. important:: Before launching Autosubmit check password-less ssh is feasible (*HPCName* is the hostname):
 .. important:: Add encryption key to ssh agent for each session (if your ssh key is encrypted)
@@ -67,6 +43,17 @@ More info on password-less ssh can be found at: http://www.linuxproblem.org/art_
 
 .. caution:: After launching Autosubmit, one must be aware of login expiry limit and policy (if applicable for any HPC) and renew the login access accordingly (by using token/key etc) before expiry.
 
+When running operational experiments (i.e. an experiment whose EXPID starts with ``'o'``, e.g. ``o001``),
+and that have a Git project, Autosubmit checks if there is any code that was not committed
+or not pushed to the remote Git repository.
+
+If there are local changes not committed and pushed, Autosubmit will fail to run
+the experiment, print an error message, and exit with an exit code different than zero.
+
+This can be disabled by setting the property ``CONFIG.GIT_OPERATIONAL_CHECK_ENABLED``
+to ``False`` (it is ``True`` by default). Note, however, that this is discouraged as
+it would affect the traceability of operational experiments.
+
 How to run an experiment that was created with another version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -76,16 +63,16 @@ Once you've already loaded / installed the Autosubmit version do you want:
 
 .. code-block:: bash
 
-    autosubmit create $EXPID -np
-    autosubmit recovery $EXPID -s --all -f -np
+    autosubmit create <EXPID> -np
+    autosubmit recovery <EXPID> -s --all -f -np
     # Add your key to ssh agent ( if encrypted )
     ssh-add ~/.ssh/id_rsa
-    autosubmit run $EXPID -v
+    autosubmit run <EXPID> -v
     or
-    autosubmit updateversion $EXPID
+    autosubmit updateversion <EXPID>
     # Add your key to ssh agent ( if encrypted )
     ssh-add ~/.ssh/id_rsa
-    autosubmit run $EXPID -v
+    autosubmit run <EXPID> -v
 
 *EXPID* is the experiment identifier.
 The most common problem when you change your Autosubmit version is the apparition of several Python errors.
@@ -101,21 +88,21 @@ Once you've already loaded / installed the Autosubmit version do you want:
 
 .. code-block:: bash
 
-    autosubmit upgrade $EXPID
-    autosubmit create $EXPID -np
-    autosubmit recovery $EXPID -s --all -f -np
+    autosubmit upgrade <EXPID>
+    autosubmit create <EXPID> -np
+    autosubmit recovery <EXPID> -s --all -f -np
     # Add your key to ssh agent ( if encrypted )
     ssh-add ~/.ssh/id_rsa
-    autosubmit run $EXPID -v
+    autosubmit run <EXPID> -v
     or
-    autosubmit updateversion $EXPID
+    autosubmit updateversion <EXPID>
     # Add your key to ssh agent ( if encrypted )
     ssh-add ~/.ssh/id_rsa
-    autosubmit run $EXPID -v
+    autosubmit run <EXPID> -v
 
-*EXPID* is the experiment identifier.
+*<EXPID>* is the experiment identifier.
 The most common problem when you upgrade an experiment with INI configuration to YAML is that some variables may be not automatically translated.
-Ensure that all your $EXPID/conf/\*.yml files are correct and also revise the templates in $EXPID/proj/$proj_name.
+Ensure that all your <EXPID>/conf/\*.yml files are correct and also revise the templates in <EXPID>/proj/$proj_name.
 
 
 How to run only selected members
@@ -127,9 +114,9 @@ To run only a subset of selected members you can execute the command:
 
         # Add your key to ssh agent ( if encrypted )
         ssh-add ~/.ssh/id_rsa
-        autosubmit run EXPID -rom MEMBERS
+        autosubmit run <EXPID> -rom MEMBERS
 
-*EXPID* is the experiment identifier, the experiment you want to run.
+*<EXPID>* is the experiment identifier, the experiment you want to run.
 
 *MEMBERS* is the selected subset of members. Format `"member1 member2 member2"`, example: `"fc0 fc1 fc2"`.
 
@@ -141,11 +128,11 @@ Furthermore, if you wish to run a sequence of only members execution; then, inst
 
     # Add your key to ssh agent ( if encrypted )
     ssh-add ~/.ssh/id_rsa
-    autosubmit run EXPID -rom MEMBER_1
-    autosubmit run EXPID -rom MEMBER_2
-    autosubmit run EXPID -rom MEMBER_3
+    autosubmit run <EXPID> -rom MEMBER_1
+    autosubmit run <EXPID> -rom MEMBER_2
+    autosubmit run <EXPID> -rom MEMBER_3
     ...
-    autosubmit run EXPID -rom MEMBER_N
+    autosubmit run <EXPID> -rom MEMBER_N
 
 How to start an experiment at a given time
 ------------------------------------------
@@ -156,9 +143,9 @@ To start an experiment at a given time, use the command:
 
     # Add your key to ssh agent ( if encrypted )
     ssh-add ~/.ssh/id_rsa
-    autosubmit run EXPID -st INPUT
+    autosubmit run <EXPID> -st INPUT
 
-*EXPID* is the experiment identifier
+*<EXPID>* is the experiment identifier
 
 *INPUT* is the time when your experiment will start. You can provide two formats:
   * `H:M:S`: For example `15:30:00` will start your experiment at 15:30 in the afternoon of the present day.
@@ -180,11 +167,11 @@ To start an experiment after another experiment is finished, use the command:
 
     # Add your key to ssh agent ( if encrypted )
     ssh-add ~/.ssh/id_rsa
-    autosubmit run EXPID -sa EXPIDB
+    autosubmit run <EXPID> -sa <EXPIDB>
 
-*EXPID* is the experiment identifier, the experiment you want to start.
+*<EXPID>* is the experiment identifier, the experiment you want to start.
 
-*EXPIDB* is the experiment identifier of the experiment you are waiting for before your experiment starts.
+*<EXPIDB>* is the experiment identifier of the experiment you are waiting for before your experiment starts.
 
 .. warning:: Both experiments must be using Autosubmit version `3.13.0` or later.
 
@@ -199,12 +186,12 @@ The `-sa` command has a long version `--start_after`.
 How to profile Autosubmit while running an experiment
 -----------------------------------------------------
 
-Autosubmit offers the possibility to profile an experiment execution. To enable the profiler, just 
+Autosubmit offers the possibility to profile an experiment execution. To enable the profiler, just
 add the ``--profile`` (or ``-p``) flag to your ``autosubmit run`` command, as in the following example:
 
 .. code-block:: bash
 
-    autosubmit run --profile EXPID
+    autosubmit run --profile <EXPID>
 
 .. include:: ../../_include/profiler_common.rst
 
@@ -217,7 +204,7 @@ This feature allows to run an experiment in two separated steps without the need
 
 To achieve this, you will have to use an special parameter called TWO_STEP_START in which you will put the list of the jobs that you want to run in an exclusive mode. These jobs will run until all of them finishes and once it finishes, the rest of the jobs will begun the execution.
 
-It can be activated through TWO_STEP_START and it is set on expdef_a02n.yml, under the experiment: section.
+It can be activated through TWO_STEP_START and it is set on expdef_<EXPID>.yml, under the experiment: section.
 
 .. code-block:: ini
 
@@ -399,10 +386,16 @@ Example 2: Crossdate wrappers using the the new dependencies
         PROCESSORS: '256'
         NOTIFY_ON: FAILED
 
-.. figure:: fig/monarch-da.png
-   :name: crossdate-example
-   :align: center
-   :alt: crossdate-example
+.. autosubmitfigure::
+    :command: create
+    :expid: a000
+    :type: png
+    :args: -cw
+    :figure: monarch_da.png
+    :name: monarch_da
+    :width: 100%
+    :align: center
+    :alt: crossdate-example
 
 
 
@@ -412,7 +405,7 @@ Finally, you can launch Autosubmit *run* in background and with ``nohup`` (conti
 
     # Add your key to ssh agent ( if encrypted )
     ssh-add ~/.ssh/id_rsa
-    nohup autosubmit run cxxx &
+    nohup autosubmit run <EXPID> &
 
 How to stop the experiment
 --------------------------
@@ -420,41 +413,16 @@ How to stop the experiment
 From Autosubmit 4.1.6, you can stop an experiment using the command `autosubmit stop`
 
 Options:
-::
 
-    usage: autosubmit stop [-h] [-f] [-a] [-fa] [-c] [-fs FILTER_STATUS]
-                       [-t STATUS]
-                       [EXPID]
-
-    Completely stops an autosubmit run process
-
-    positional arguments:
-      EXPID                 experiment identifier, stops the listed expids
-                            separated by ","
-
-    optional arguments:
-      -h, --help            show this help message and exit
-      -f, --force           Forces to stop autosubmit process, equivalent to kill
-                            -9
-      -a, --all             Stop all current running autosubmit processes, will
-                            ask for confirmation
-      -fa, --force_all      Stop all current running autosubmit processes
-      -c, --cancel          Orders to the schedulers to stop active jobs.
-      -fs FILTER_STATUS, --filter_status FILTER_STATUS
-                            Select the status (one or more) to filter the list of
-                            jobs. Default is SUBMITTED, QUEUING, RUNNING.
-			    
-      -t STATUS, --target STATUS
-                            Final status of killed jobs. Default is FAILED.
-
+.. runcmd:: autosubmit stop -h
 
 Examples:
 ~~~~~~~~~
 
 .. code-block:: bash
 
-    autosubmit stop cxxx
-    autosubmit stop cxxx, cyyy
+    autosubmit stop <EXPID>
+    autosubmit stop <EXPID>, <EXPID>
     autosubmit stop -a
     autosubmit stop -a -f
     autosubmit stop -a -c
@@ -466,15 +434,55 @@ To get the process identifier (PID) you can use the ps command on a shell interp
 ::
 
     ps -ef | grep autosubmit
-    dbeltran  22835     1  1 May04 ?        00:45:35 autosubmit run cxxy
-    dbeltran  25783     1  1 May04 ?        00:42:25 autosubmit run cxxx
+    dbeltran  22835     1  1 May04 ?        00:45:35 autosubmit run <EXPID>
+    dbeltran  25783     1  1 May04 ?        00:42:25 autosubmit run <EXPID>
 
 To send a signal to a process you can use kill also on a terminal.
 
-To stop immediately experiment cxxx:
+To stop immediately experiment <EXPID>:
 ::
 
     kill -9 22835
 
 .. important:: In case you want to restart the experiment, you must follow the
     :ref:`workflow_recovery` procedure, explained below, in order to properly resynchronize all completed jobs.
+
+
+Retries
+-------
+
+For remote platforms, there are at least two parts where retries happen
+(if you use wrappers you may have others), when Autosubmit **connects** to
+the remote platform, and when Autosubmit **executes** a command.
+
+When Autosubmit **connects** to a remote platform, it will use the ``host``
+value of the platform configuration. This value can contain a single
+host name, or a list of host names using commas (*,*) as separators.
+
+Right now Autosubmit has a hard-coded number of retries for connecting
+to remote platforms. It will try to connect to the platform, without
+interval, **retrying connecting twice (``2``)**. It will write to logs in
+``INFO`` and ``WARNING`` levels information about the retries, like
+whether it is retrying to connect, and what is the current retry number.
+
+When Autosubmit retries connecting to a platform with multiple hosts
+separated by comma, the first connection uses the first host name. If it
+retries the connection, the next executions will exclude the first host,
+and then randomly select one of the remaining host names.
+
+For **executing** commands on remote platforms, Autosubmit uses another
+hard-coded value of ``3`` retries, without interval between each retry.
+Autosubmit will submit the command to be executed via SSH. If the command
+fails on the remote platform, **Autosubmit will not retry** the command.
+
+As an example, if you try to run an executable such as ``Rscript``, but this
+executable does not exist on the remote platform, Autosubmit will log the error,
+and mark the job as ``FAILED``.
+
+However, if you have a networking issue between Autosubmit and your remote
+platform, then Autosubmit will log in ``INFO`` and ``WARNING`` and **will
+retry executing the command up to hard-coded ``3`` retries**.
+
+.. note::
+  We already have an issue created to make these retry settings configurable
+  by users and site admins.

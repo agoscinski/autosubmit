@@ -18,11 +18,13 @@
 """Test for the ``autosubmit stats`` command."""
 
 from pathlib import Path
+from time import time, sleep
+
+from psutil import Process
 
 from autosubmit.scripts.autosubmit import main
 
 _EXPID = 't000'
-
 
 def test_autosubmit_commands_help(autosubmit_exp, mocker):
     """Test that the monitor is called for stats with a simple job list.
@@ -30,14 +32,34 @@ def test_autosubmit_commands_help(autosubmit_exp, mocker):
     It must produce three PNG files. One with the job summary, one with the
     section summary, and one with the general statistics.
     """
-
-    exp = autosubmit_exp(_EXPID, experiment_data={})
+    exp = autosubmit_exp(_EXPID, experiment_data={
+        'JOBS': {
+            'SIM': {
+                'RUNNING': 'once',
+                'PLATFORM': 'local',
+                'SCRIPT': 'echo "OK"'
+            }
+        }
+    })
 
     exp.autosubmit._check_ownership_and_set_last_command(
         exp.as_conf,
         exp.expid,
         'run')
+
+    processes_before_run = Process().children(recursive=True)
     assert 0 == exp.autosubmit.run_experiment(_EXPID)
+    processes_after_run = Process().children(recursive=True)
+
+    before = time()
+    wait_n_seconds = 30
+    while time() - before < wait_n_seconds:
+        if len(processes_after_run) <= len(processes_before_run):
+            break
+        # Children processes of ``autosubmit run`` may still be running, and
+        # we need those to finish in this test so that we have all the remote
+        # data copied, and ``autosubmit stats`` can run and use those files.
+        sleep(1)
 
     mocker.patch('sys.argv', ['autosubmit', 'stats', '-o', 'png', '--section_summary',
                               '--jobs_summary', '--hide', _EXPID])

@@ -23,10 +23,10 @@ from typing import Optional
 
 import pytest
 
+from autosubmit.config.basicconfig import BasicConfig
 from autosubmit.job.job_common import Status
+from autosubmit.log.log import Log
 from autosubmit.notifications.mail_notifier import MailNotifier
-from autosubmitconfigparser.config.basicconfig import BasicConfig
-from log.log import Log
 
 
 # -- fixtures
@@ -137,7 +137,7 @@ def test_compress_file(
             return_value=Path(temp_dir))
 
         mail_notifier.notify_experiment_status(
-            'a000', ['recipient@example.com'], mock_platform)  # type: ignore
+            'a000', ['recipient@example.com'], mock_platform)
 
         if sendmail_error:
             mock_printlog.assert_called_once()
@@ -176,7 +176,7 @@ def test_compress_file(
 
         # Log connection error: Simulate an error while sending email
         (Exception("SMTP server error"),
-         'Trace:SMTP server error\nAn error has occurred while sending a mail for the job Job1')
+         'Trace:SMTP server error\nAn error has occurred while sending a warning mail about remote_platform')
     ],
     ids=[
         "Normal case: No errors",

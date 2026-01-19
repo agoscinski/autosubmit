@@ -34,7 +34,7 @@ def _create_process(mocker, expid, username: Optional[str] = None, command='run'
         '-lc',
         'DEBUG',
         command,
-        '--notransitive',
+        '--update_version',
         expid,
         '-v'
     ]
@@ -57,7 +57,7 @@ def _create_process(mocker, expid, username: Optional[str] = None, command='run'
         'One expid, but different (and invalid POSIX) user, none is retrieved',
         'Two expids, two are retrieved',
         'Three expids, but one expid is invalid, so only two are retrieved',
-        'Two expids, none are valid, so none is retrievd',
+        'Two expids, none are valid, so none is retrieved',
     ]
 )
 def test_retrieve_expids(mocker, expids: List[str], expected_retrieved: int, username: Optional[str]):
@@ -133,7 +133,7 @@ def test_process_id_multiple_found(mocker):
 
     pid_found = process_id('a000')
 
-    assert pid_found is 1
+    assert pid_found == 1
     assert mocked_log.warning.call_count == 1
 
 

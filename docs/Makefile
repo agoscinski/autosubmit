@@ -2,11 +2,11 @@
 #
 
 # You can set these variables from the command line.
-SPHINXOPTS    = -W
+SPHINXOPTS    = -W -vvv
 SPHINXBUILD   = sphinx-build
 PAPER         =
 SOURCEDIR     = source
-BUILDDIR      = build
+BUILDDIR      := $(if $(READTHEDOCS_OUTPUT), $(READTHEDOCS_OUTPUT), build)
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -20,9 +20,76 @@ ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) sou
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) source
 
-.PHONY: help clean watch html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest coverage gettext
+.PHONY: help clean watch html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest coverage gettext as_setup .EXPORT_ALL_VARIABLES
+
+AS_ENV := $(BUILDDIR)/autosubmit/env.mk
+
+# This sets up Autosubmit for Sphinx. It writes experiments to the build directory,
+# inside the sub-directory autosubmit. Note, this is a phony target, and uses
+# `.EXPORT_ALL_VARIABLES`, which was also made phony. All variables defined here
+# are exported to other targets. Use this feature with care!
+as_setup: .EXPORT_ALL_VARIABLES
+	$(eval AUTOSUBMIT_DIRECTORY := $(shell realpath -m $(BUILDDIR)/autosubmit))
+	rm -rf $(AUTOSUBMIT_DIRECTORY)
+	$(eval AUTOSUBMIT_CONFIGURATION := $(AUTOSUBMIT_DIRECTORY)/autosubmitrc)
+
+	mkdir -p $(dir $(AS_ENV))
+	echo "export AUTOSUBMIT_DIRECTORY := $(AUTOSUBMIT_DIRECTORY)" > $(AS_ENV)
+	echo "export AUTOSUBMIT_CONFIGURATION := $(AUTOSUBMIT_CONFIGURATION)" >> $(AS_ENV)
+
+	mkdir -p $(AUTOSUBMIT_DIRECTORY)/autosubmit
+	mkdir -p $(AUTOSUBMIT_DIRECTORY)/autosubmit/metadata
+	mkdir -p $(AUTOSUBMIT_DIRECTORY)/autosubmit/metadata/data
+	mkdir -p $(AUTOSUBMIT_DIRECTORY)/autosubmit/metadata/graph
+	mkdir -p $(AUTOSUBMIT_DIRECTORY)/autosubmit/metadata/logs
+	mkdir -p $(AUTOSUBMIT_DIRECTORY)/autosubmit/metadata/structures
+	mkdir -p $(AUTOSUBMIT_DIRECTORY)/autosubmit/logs
+	@echo "Autosubmit home: [$(AUTOSUBMIT_DIRECTORY)]"
+	touch $(AUTOSUBMIT_CONFIGURATION)
+	@echo "Autosubmit configuration: [$(AUTOSUBMIT_CONFIGURATION)]"
+
+	$(eval AUTOSUBMIT_CONFIGURATION_CONTENTS="\
+	[database]\n\
+	path = $(AUTOSUBMIT_DIRECTORY)/autosubmit\n\
+	filename = autosubmit.db\n\
+	\n\
+	[local]\n\
+	path = $(AUTOSUBMIT_DIRECTORY)/autosubmit\n\
+	\n\
+	[globallogs]\n\
+	path = $(AUTOSUBMIT_DIRECTORY)/autosubmit/logs\n\
+	\n\
+	[structures]\n\
+	path = $(AUTOSUBMIT_DIRECTORY)/autosubmit/metadata/structures\n\
+	\n\
+	[historicdb]\n\
+	path = $(AUTOSUBMIT_DIRECTORY)/autosubmit/metadata/data\n\
+	\n\
+	[historiclog]\n\
+	path = $(AUTOSUBMIT_DIRECTORY)/autosubmit/metadata/logs")
+	echo $(AUTOSUBMIT_CONFIGURATION_CONTENTS) > $(AUTOSUBMIT_CONFIGURATION)
+
+	@echo "Installing Autosubmit..."
+	AUTOSUBMIT_CONFIGURATION=$(AUTOSUBMIT_CONFIGURATION) autosubmit install
+	@echo "Autosubmit installed!"
+	AUTOSUBMIT_CONFIGURATION=$(AUTOSUBMIT_CONFIGURATION) autosubmit -lc DEBUG expid -dm -H "local" -d "Tutorial"
+	@echo "Autosubmit Experiment Created!"
+	@echo "Autosubmit Adding a New Platform!"
+	cat platform.yml >> $(AUTOSUBMIT_DIRECTORY)/autosubmit/a000/conf/platforms_a000.yml
+	@echo "Autosubmit Platform Created!"
+
+
+# Automatically call Autosubmit's setup target.
+-include as_setup
+
+-include $(BUILDDIR)/autosubmit/env.mk
+
+.DEFAULT_GOAL := html
+
+html dirhtml singlehtml watch latex latexpdf: as_setup
 
 help:
+	env | grep AUTOSUBMIT
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  html       to make standalone HTML files"
 	@echo "  watch      to make standalone HTML files and watch for changes"
@@ -66,8 +133,14 @@ watch: clean
 			--watch='source' \
 			$(SPHINXOPTS) $(O)
 
+xml_coverage:
+	coverage run $$(which $(SPHINXBUILD)) -b xml $(ALLSPHINXOPTS) $(BUILDDIR)/xml
+	@echo
+	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html. Coverage in $(BUILDDIR)/htmlcov."
+
 html:
-	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	@echo "$(READTHEDOCS_OUTPUT)"
+	$(SPHINXBUILD) -M html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 

@@ -26,11 +26,11 @@ from pathlib import Path
 from textwrap import dedent
 
 import pytest
-from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmit.config.basicconfig import BasicConfig
 
 from autosubmit.autosubmit import Autosubmit
 from autosubmit.experiment.experiment_common import new_experiment, copy_experiment
-from log.log import AutosubmitCritical, AutosubmitError
+from autosubmit.log.log import AutosubmitCritical, AutosubmitError
 
 _EXPID = 't000'
 _DESCRIPTION = "for testing"
@@ -44,7 +44,7 @@ _VERSION = "test-version"
         'ev'
     ]
 )
-def test_copy_experiment(type_flag: str, autosubmit_exp: Callable, autosubmit: Autosubmit) -> None:
+def test_copy_experiment(type_flag: str, autosubmit_exp: Callable, autosubmit: Autosubmit):
     """Test that we can copy experiment using flags for operational and evaluation experiment types.
 
     :param type_flag: Variable to check which kind of flag it is.
@@ -56,7 +56,8 @@ def test_copy_experiment(type_flag: str, autosubmit_exp: Callable, autosubmit: A
 
     :return: None
     """
-    base_experiment = autosubmit_exp('t000', experiment_data={})
+    autosubmit.install()
+    base_experiment = autosubmit_exp('t000', experiment_data={}, include_jobs=True)
 
     is_operational = type_flag == 'op'
     is_evaluation = type_flag == 'ev'
@@ -79,16 +80,13 @@ def test_copy_experiment(type_flag: str, autosubmit_exp: Callable, autosubmit: A
         'ev'
     ]
 )
-def test_expid_mutually_exclusive_arguments(type_flag: str, autosubmit: Autosubmit) -> None:
+def test_expid_mutually_exclusive_arguments(type_flag: str, autosubmit: Autosubmit):
     """Test for issue 2280, where mutually exclusive arguments like op/ev flags and min were not working.
 
     :param type_flag: Variable to check which kind of flag it is.
-    :type type_flag: bool
     :param autosubmit: Autosubmit interface that instantiate with no experiment.
-    :type autosubmit: Autosubmit
-
-    :return: None
     """
+    autosubmit.install()
     is_operational = type_flag == 'op'
     is_evaluation = type_flag == 'ev'
 
@@ -110,19 +108,14 @@ def test_expid_mutually_exclusive_arguments(type_flag: str, autosubmit: Autosubm
         False
     ]
 )
-def test_copy_minimal(has_min_yaml: bool, autosubmit: Autosubmit) -> None:
-    """
-    Test for issue 2280, ensure autosubmit expid -min --copy expid_id cannot be used if the experiment
+def test_copy_minimal(has_min_yaml: bool, autosubmit: Autosubmit):
+    """Test for issue 2280, ensure autosubmit expid -min --copy expid_id cannot be used if the experiment
     does not have an expid_id/conf/minimal.yml file
 
     :param has_min_yaml: Variable to simulate if experiment has minimal or not.
-    :type has_min_yaml: bool
     :param autosubmit: Autosubmit interface that instantiate with no experiment.
-    :type autosubmit: Autosubmit
-
-    :return: None
     """
-
+    autosubmit.install()
     expid = autosubmit.expid(
         'test',
         hpc='local',
@@ -150,7 +143,7 @@ def test_copy_minimal(has_min_yaml: bool, autosubmit: Autosubmit) -> None:
             assert "minimal.yml" in str(exc_info.value)
 
 
-def test_create_expid_default_hpc(autosubmit: Autosubmit) -> None:
+def test_create_expid_default_hpc(autosubmit: Autosubmit):
     """Create expid with the default hcp value (no -H flag defined).
 
     code-block:: console
@@ -158,10 +151,9 @@ def test_create_expid_default_hpc(autosubmit: Autosubmit) -> None:
         autosubmit expid -d "test descript"
 
     :param autosubmit: Autosubmit interface that instantiate with no experiment.
-    :type autosubmit: Autosubmit
-
-    :return: None
     """
+    autosubmit.install()
+
     # create default expid
     experiment_id = autosubmit.expid(
         'experiment_id',
@@ -179,7 +171,7 @@ def test_create_expid_default_hpc(autosubmit: Autosubmit) -> None:
 @pytest.mark.parametrize("fake_hpc,expected_hpc", [
     ("mn5", "mn5"),
     ("", "local"), ])
-def test_create_expid_flag_hpc(fake_hpc: str, expected_hpc: str, autosubmit: Autosubmit) -> None:
+def test_create_expid_flag_hpc(fake_hpc: str, expected_hpc: str, autosubmit: Autosubmit):
     """Create expid using the flag -H. Defining a value for the flag and not defining any value for that flag.
 
     code-block:: console
@@ -188,15 +180,11 @@ def test_create_expid_flag_hpc(fake_hpc: str, expected_hpc: str, autosubmit: Aut
         autosubmit expid -H "" -d "experiment"
 
     :param fake_hpc: The value for the -H flag (hpc value).
-    :type fake_hpc: str
     :param expected_hpc: The value it is expected for the variable hpc.
-    :type expected_hpc: str
     :param autosubmit: Autosubmit interface that instantiate with no experiment.
-    :type autosubmit: Autosubmit
-
-    :return: None
     """
     # create default expid with know hpc
+    autosubmit.install()
 
     experiment_id = autosubmit.expid(
         'experiment',
@@ -211,11 +199,41 @@ def test_create_expid_flag_hpc(fake_hpc: str, expected_hpc: str, autosubmit: Aut
     assert hpc_result_experiment == expected_hpc
 
 
+@pytest.mark.parametrize("experiment_hpc,expected_hpc", [
+    ("local","mn5"),
+    ("mn5","marenostrum"), ])
+def test_copy_expid_with_flag_hpc(tmp_path: Path, autosubmit: Autosubmit, experiment_hpc, expected_hpc):
+    """Create expid using the flag -H. Defining a value for the flag and not defining any value for that flag.
+
+    code-block:: console
+
+        autosubmit expid -H ithaca -d "experiment"
+        autosubmit expid -H "" -d "experiment"
+
+    :param fake_hpc: The value for the -H flag (hpc value).
+    :param expected_hpc: The value it is expected for the variable hpc.
+    :param autosubmit: Autosubmit interface that instantiate with no experiment.
+    """
+    autosubmit.install()
+
+    exp_id = autosubmit.expid('experiment', hpc=experiment_hpc, minimal_configuration=True)
+    copy_exp = autosubmit.expid('copy', hpc=expected_hpc , copy_id=exp_id, minimal_configuration=True)
+
+    describe = autosubmit.describe(exp_id)
+    hpc_experiment = describe[4].lower()
+
+    describe_copy = autosubmit.describe(copy_exp)
+    hpc_experiment_copy = describe_copy[4].lower()
+
+    assert hpc_experiment != hpc_experiment_copy
+    assert hpc_experiment_copy == expected_hpc
+
+
 @pytest.mark.parametrize("fake_hpc,expected_hpc", [
     ("mn5", "mn5"),
     ("", "local"),
 ])
-def test_copy_expid(fake_hpc: str, expected_hpc: str, autosubmit: Autosubmit) -> None:
+def test_copy_expid(fake_hpc: str, expected_hpc: str, autosubmit: Autosubmit):
     """Copy an experiment without indicating which is the new HPC platform
 
     code-block:: console
@@ -224,14 +242,10 @@ def test_copy_expid(fake_hpc: str, expected_hpc: str, autosubmit: Autosubmit) ->
         autosubmit expid -y a000 -d ""
 
     :param fake_hpc: The value for the -H flag (hpc value).
-    :type fake_hpc: str
     :param expected_hpc: The value it is expected for the variable hpc.
-    :type expected_hpc: str
     :param autosubmit: Autosubmit interface that instantiate with no experiment.
-    :type autosubmit: Autosubmit
-
-    :return: None
     """
+    autosubmit.install()
     # create default expid with know hpc
 
     original_id = autosubmit.expid(
@@ -249,7 +263,7 @@ def test_copy_expid(fake_hpc: str, expected_hpc: str, autosubmit: Autosubmit) ->
     assert hpc_result_copy == expected_hpc
 
 
-def test_copy_expid_no(autosubmit: Autosubmit) -> None:
+def test_copy_expid_no(autosubmit: Autosubmit):
     """Copying expid, but choosing another HPC value must create a new experiment with the chosen HPC value
 
     code-block:: console
@@ -257,10 +271,8 @@ def test_copy_expid_no(autosubmit: Autosubmit) -> None:
         autosubmit expid -y a000 -h local -d "experiment is about..."
 
     :param autosubmit: Autosubmit interface that instantiates with no experiment.
-    :type autosubmit: Autosubmit
-
-    :return: None
     """
+    autosubmit.install()
     # create default expid with know hpc
     fake_hpc = "mn5"
     new_hpc = "local"
@@ -271,7 +283,7 @@ def test_copy_expid_no(autosubmit: Autosubmit) -> None:
     describe = autosubmit.describe(copy_experiment_id)
     hpc_result = describe[4].lower()
 
-    assert hpc_result != new_hpc
+    assert hpc_result == new_hpc
 
 
 def _get_experiment_data(tmp_path):
@@ -279,12 +291,12 @@ def _get_experiment_data(tmp_path):
 
     return {
         'PLATFORMS': {
-            'pytest-ps': {
-                'type': 'ps',
-                'host': '127.0.0.1',
-                'user': _user,
-                'project': 'whatever',
-                'scratch': str(tmp_path / 'scratch'),
+            'PYTEST-PS': {
+                'TYPE': 'ps',
+                'HOST': '127.0.0.1',
+                'USER': _user,
+                'PROJECT': 'whatever',
+                'SCRATCH': str(tmp_path / 'scratch'),
                 'DISABLE_RECOVERY_THREADS': 'True'
             }
         },
@@ -334,7 +346,7 @@ def _build_db_mock(current_experiment_id, mock_db_common, mocker):
     mock_db_common.check_experiment_exists = mocker.Mock(return_value=False)
 
 
-def test_autosubmit_generate_config(mocker, autosubmit, tmp_path):
+def test_autosubmit_generate_config(mocker, autosubmit: Autosubmit, tmp_path):
     expid = 'ff99'
     original_local_root_dir = BasicConfig.LOCAL_ROOT_DIR
     read_files_mock = mocker.patch('autosubmit.autosubmit.read_files')
@@ -382,12 +394,8 @@ def test_autosubmit_generate_config(mocker, autosubmit, tmp_path):
     BasicConfig.LOCAL_ROOT_DIR = original_local_root_dir
 
 
-def test_autosubmit_generate_config_resource_listdir_order(
-        autosubmit,
-        mocker
-) -> None:
-    """
-    In https://earth.bsc.es/gitlab/es/autosubmit/-/issues/1063 we had a bug
+def test_autosubmit_generate_config_resource_listdir_order(autosubmit, mocker):
+    """In https://earth.bsc.es/gitlab/es/autosubmit/-/issues/1063 we had a bug
     where we relied on the order of returned entries of ``pkg_resources.resource_listdir``
     (which is actually undefined per https://importlib-resources.readthedocs.io/en/latest/migration.html).
 
@@ -399,10 +407,7 @@ def test_autosubmit_generate_config_resource_listdir_order(
     template file used. But for other cases we get as many files as we have that are not
     ``*minimal.yml`` nor ``*dummy.yml``. In our test cases here, when not dummy and not minimal
     we must get 2 files, since we have ``include_me_please.yml`` and ``me_too.yml``.
-
-    :return: None
     """
-
     # unique lists of resources, no repetitions
 
     yaml_mock = mocker.patch('autosubmit.autosubmit.YAML.dump', return_value=None)
@@ -458,6 +463,7 @@ def test_autosubmit_generate_config_resource_listdir_order(
 
 
 def test_expid_generated_correctly(tmp_path, autosubmit_exp, autosubmit):
+    autosubmit.install()
     as_exp = autosubmit_exp(_EXPID, _get_experiment_data(tmp_path))
     run_dir = as_exp.as_conf.basic_config.LOCAL_ROOT_DIR
     autosubmit.inspect(expid=f'{_EXPID}', check_wrapper=True, force=True, lst=None, filter_chunks=None,
@@ -473,7 +479,8 @@ def test_expid_generated_correctly(tmp_path, autosubmit_exp, autosubmit):
         cursor.close()
 
 
-def test_delete_experiment(mocker, tmp_path, autosubmit_exp, autosubmit):
+def test_delete_experiment(mocker, tmp_path, autosubmit_exp, autosubmit: Autosubmit):
+    autosubmit.install()
     as_exp = autosubmit_exp(_EXPID, _get_experiment_data(tmp_path))
     run_dir = as_exp.as_conf.basic_config.LOCAL_ROOT_DIR
     mocker.patch("autosubmit.autosubmit.process_id", return_value=None)
@@ -494,7 +501,8 @@ def test_delete_experiment(mocker, tmp_path, autosubmit_exp, autosubmit):
         autosubmit.delete(expid=f'{_EXPID}', force=True)
 
 
-def test_delete_experiment_not_owner(mocker, tmp_path, autosubmit_exp, autosubmit):
+def test_delete_experiment_not_owner(mocker, tmp_path, autosubmit_exp, autosubmit: Autosubmit):
+    autosubmit.install()
     as_exp = autosubmit_exp(_EXPID, _get_experiment_data(tmp_path))
     run_dir = as_exp.as_conf.basic_config.LOCAL_ROOT_DIR
     mocker.patch('autosubmit.autosubmit.Autosubmit._user_yes_no_query', return_value=True)
@@ -528,11 +536,26 @@ def test_delete_experiment_not_owner(mocker, tmp_path, autosubmit_exp, autosubmi
         cursor.close()
 
 
-def test_delete_expid(mocker, tmp_path, autosubmit_exp, autosubmit):
+@pytest.mark.parametrize(
+    "expid_value",
+    [
+        pytest.param("..", id="parent_dir"),
+        pytest.param("", id="empty_string"),
+        pytest.param(".", id="current_dir"),
+        pytest.param("as_exp.expid", id="valid_expid"),
+    ]
+)
+def test_delete_expid(mocker, tmp_path, autosubmit_exp, autosubmit, expid_value):
     as_exp = autosubmit_exp(_EXPID, _get_experiment_data(tmp_path))
     mocker.patch('autosubmit.autosubmit.Autosubmit._perform_deletion', return_value="error")
-    with pytest.raises(AutosubmitError):
-        autosubmit._delete_expid(as_exp.expid, force=True)
+    expid_value = as_exp.expid if expid_value == "as_exp.expid" else expid_value
+    if expid_value in ["..", "", "."]:
+        with pytest.raises(AutosubmitCritical) as exc_info:
+            autosubmit._delete_expid(expid_value, force=True)
+            assert exc_info.value.code == 7001
+    else:
+        with pytest.raises(AutosubmitError):
+            autosubmit._delete_expid(as_exp.expid, force=True)
     mocker.stopall()
     autosubmit._delete_expid(as_exp.expid, force=True)
     assert not autosubmit._delete_expid(as_exp.expid, force=True)

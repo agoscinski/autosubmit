@@ -187,6 +187,21 @@ of how to install Autosubmit with Conda.
                <img class="img-fluid dark-light" src="_static/logos/caliope.png" alt="CALIOPE" title="CALIOPE, CALIdad del aire Operacional Para España " />
             </div>
          </div>
+         <div class="col-lg-3 col-md-4 col-xs-6">
+            <div class="community-logo">
+               <img class="img-fluid dark-light" src="_static/logos/ganana.png" alt="GANANA" title="The Ganana project unites European Union and Indian efforts in scientific High-Performance Computing (HPC) " />
+            </div>
+         </div>
+         <div class="col-lg-3 col-md-4 col-xs-6">
+            <div class="community-logo">
+               <img class="img-fluid dark-light" src="_static/logos/hpcw.png" alt="HPCW" title="HPCW - The High Performance Climate&Weather Benchmark " />
+            </div>
+         </div>
+         <div class="col-lg-3 col-md-4 col-xs-6">
+            <div class="community-logo">
+               <img class="img-fluid dark-light" src="_static/logos/terradt.png" alt="TerraDT" title="Digital Twins of Earth System for Cryosphere, Land surface and related interaction " />
+            </div>
+         </div>
       </div>
       <div class="row gap-4">
          <div class="col" style="min-width: 20rem;">
@@ -209,7 +224,7 @@ of how to install Autosubmit with Conda.
                <i class="fa-solid fa-clock-rotate-left fs-4" style="color: #4E8490;"></i>
                Fault Tolerance
              </p>
-             <p>Automatic retrials and ability to re-run specific parts of
+             <p>Automatic retries and ability to re-run specific parts of
                 the experiment in case of failure.</p>
          </div>
          <div class="col" style="min-width: 20rem;">
@@ -258,6 +273,10 @@ of how to install Autosubmit with Conda.
       </div>
    </div>
 
+Citing Autosubmit
+=================
+
+.. citation::
 
 Contact Us
 ==========

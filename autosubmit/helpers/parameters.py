@@ -1,9 +1,27 @@
+# Copyright 2015-2025 Earth Sciences Department, BSC-CNS
+#
+# This file is part of Autosubmit.
+#
+# Autosubmit is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Autosubmit is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
+
 import functools
 import inspect
 from collections import defaultdict
-from typing import Dict
+from typing import Any
 
-PARAMETERS = defaultdict(defaultdict)
+
+PARAMETERS: dict[str, Any] = defaultdict(defaultdict)
 """Global default dictionary holding a multi-level dictionary with the Autosubmit
 parameters. At the first level we have the parameter groups.
 
@@ -22,14 +40,14 @@ to populate the comments in the Autosubmit YAML configuration files.
 """
 
 
-def autosubmit_parameters(cls=None, *, parameters: Dict):
+def autosubmit_parameters(cls=None, *, parameters: dict):
     """Decorator for Autosubmit configuration parameters defined in a class.
 
     This is useful for parameters that are not defined in a single function or
     class (e.g. parameters that are created on-the-fly in functions)."""
 
-    def wrap(cls):
-        parameters = wrap.parameters
+    def wrap(cls) -> Any:
+        parameters = wrap.parameters  # type: ignore
 
         for group, group_parameters in parameters.items():
             group = group.upper()
@@ -43,7 +61,7 @@ def autosubmit_parameters(cls=None, *, parameters: Dict):
 
         return cls
 
-    wrap.parameters = parameters
+    wrap.parameters = parameters  # type: ignore
 
     # NOTE: This is not reachable code, as the parameters must be defined!
     # if cls is not None:

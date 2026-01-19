@@ -1,4 +1,99 @@
-### 4.1.15: Unreleased
+### 4.1.17: Unreleased
+
+**Enhancements:**
+
+- Fix intermittent failures of unit tests, and enable print of AS exceptions.
+  Changes and improvements to fixtures and pytest organisation and setup #2745
+
+### 4.1.16: Unreleased
+
+This release adds support to Postgres using SQLAlchemy, without removing the
+SQLite support. By default, Autosubmit will use SQLite. Postgres support is
+experimental and not recommended for production yet.
+
+Autosubmit Config Parser code has been merged back into this code base. LOCAL
+platform does not support wrappers anymore (it was used for testing).
+
+The `--notransitive` argument has been deprecated in all commands. You may still
+use it without a failure, but there will be a warning displayed asking you to
+update your command line. This argument will be completely removed on a later
+release.
+
+**Known issues:**
+
+- Due to a new heredoc blocks to handle failures in the templates, `script.cmd.err` line numbers are offset by ~5 lines (e.g. reported line 10 → actual line 15). #2694 #2718
+- Please adjust accordingly when debugging.
+
+**Bug fixes:**
+
+- Fixed issue with the verification of dirty Git local repositories in operational experiments #2446
+- Fixed error when cleaning projects that use Git #2524
+- Fixed bug that occurred when copying experiments with different HPC platforms, where the incorrect platform was used 
+  instead of the user-specified platform #2650
+- Fixed bug that occurred when having "CUSTOM_" placeholders in the header section of a wrapper #2669
+- Fixes an issue with multi-day applications dependencies bug #2631
+- Fixes an issue with all-filter #2565
+- Fixes an issue when setting a dependency to a different date or member # 2466 ( #2518 partially)
+- Fixes an issue with recovery not being able to cancel active jobs #2695
+- Fixes an issue with SQLAlchemy not working correctly with the historical job_data.db #2695
+- Fixes an issue with infinite loop when additional files are not found #2468
+- Fixes an issue with sections ignoring the MAX_WAITING_JOBS parameter #2613
+- Fixed bug where an RO-Crate file would include itself in the archive, as well as other zip files.
+  Now Autosubmit uses the pattern $expid-crate-$date-$time-$millisecond.zip, and ignores any ZIP files
+  in the tmp/ASLOGS that start with $expid-crate and end with .zip #2692
+- Fixed 'NoneType' object has no attribute 'set' that would have set a 'NoneType' instead of a 'EventType' #2611 #2583
+- Standardized the inner_job submission for non-vertical wrappers #1474
+- Fixed an issue with some placeholders not being replaced in templates #2426
+- Could* fix an issue with the HPC* missing variables in the templates #2432
+- Fixed "Unexpected error: 'list' object has no attribute 'status'" when running experiments #2463
+- Tentative *fix for an issue with the HPC* missing variables in the templates #2432
+- Fixed issue where Autosubmit did not retry when there were networking issues in platforms #1369
+- Fixed an issue with additional files not being sent to the remote platform when using wrappers #1484
+
+**Enhancements:**
+
+- autosubmit/autosubmit container now includes the `$USER` environment variable
+  via its entrypoint #2359
+- Adding a Slurm Container to the CI/CD and creating tests to increase the
+  coverage of the Platforms #977
+- Execute scripts to generate the documentation and standardize expid on documentation #1160
+- Added new Autosubmit users GANANA, ESiWACE HPCW, and TerraDT #2445
+- The autosubmit-config-parser GitHub project has been archived and its code moved
+  to Autosubmit repository, merging the projects again #2052
+- Documentation about `FOR.NAME` with values that are not strings #2515
+- Improvement of the error messages for YAML files #2488 and for RO-CRATE #2572
+- Added `--force` flag to `autosubmit pklfix` command, and `--yes` flag to `autosubmit stop` to
+  automatically answer yes to prompts #2569
+- Improvement of error message when `LOCAL` project location is a file, not a directory #1972 #1254
+- Removed the code for wrappers with local platform that were create only for tests #2522
+- Added SQLAlchemy as the main database entrypoint, enabling backends of Sqlite (default) and Postgres (new) #2187
+- Added mypy and ruff to the CI for the files touched by a change granting a 
+  higher quality and preservation of the code #2626 #2621
+- Updated base images of micromamba and debian for security update #2610
+- Added "CUSTOM_" directives support in the wrapper configuration #2669
+- Added a platform option to compress log files of the job's output during log recovery #2555
+- Added automated citation instructions to the website landing page #2480
+- Improving the error message handling for incorrect YAML syntax (too cryptic) #2651
+- Added a platform option to remove remote log files of the job's output after log recovery #2655
+- COMPLETED files are now fetch instead of downloaded. #2695, #2559
+- Improved recovery command performance. _COMPLETED files are now fetched in a single call. related to #2695, #2570, #2563
+- Added --offline flag to the recovery command to turn off retrieval of logs when the remote platform is not reachable. related to #2695
+- Improved the performance of setstatus #2695
+- Improved the validation code of the setstatus -fc, -ftc and -ftcs filters and unified them related to #1250
+- Deprecated `--notransitive` argument as that was not used anymore #2577
+- docstrings were made more uniform across several functions (should reflect in sphinx docs),
+  fixed several ruff and mypy warnings, and did minor refactorings in the code like removing the
+  `Submitter` class and using `ParamikoSubmitter` directly (only implementation) #2577
+- Added documentation regarding in-line script definition. 
+- Fixes an issue with general wrapper parameters crashing during runtime when defined. #2743
+
+### 4.1.15: Bug fixes, enhancements, and new features
+
+The filter `-fp` of the command `autosubmit stats` changed in this release.
+Previously, a `-fp 0` would not raise any errors, and would bring all the
+jobs, just like when no filter is provided. Now both negative numbers and
+`0` (zero) raise an error, and only values greater than `0` are used to compute
+the filter the jobs. Not using any value for `-fp` still returns all jobs.
 
 **Bug fixes:**
 
@@ -8,10 +103,19 @@
   adding new deposits via its webhook #2401
 - Deleted command `autosubmit test` that was not working in Autosubmit 4 #2386
 - Removed PBS and SGE platforms as they are not working in AS4 #2349
+- Log levels in the command line now accept `ERROR` #2412
+- Fix setstatus command to work in all cases #2381
+- Fix PS platform to work with the local machine #2374
+- Fixed a `ZeroDivisionError` when using RO-Crate or `stats`, and also an issue
+  where the message said `None` could not be iterable. #2389
+- Fixed a bug that produces an infinite loop when it is not possible to create log files #2618
 
 **Enhancements:**
 
 - EDITO Autosubmit-Demo container updated to install API in different environment #2398
+- Update portalocker requirement from <=3.1.1 to <=3.2.0 #2423
+- Additional files are now generated upon using the `autosubmit inspect` command #2323
+- Operational runs now require no pending commits, ensuring a cleaner workflow. [#2220](https://github.com/BSC-ES/autosubmit/issues/2220), [PR](https://github.com/BSC-ES/autosubmit/pull/2293) 
 
 ### 4.1.14: Bug fixes, enhancements, and new features
 
@@ -32,7 +136,6 @@
 
 **New features:**
 - Added support for `%^%` variables to improve template customization. [PR](https://github.com/BSC-ES/autosubmit/pull/2288), [Docs](https://autosubmit.readthedocs.io/en/latest/userguide/templates.html#sustitute-placeholders-after-all-files-have-been-loaded)
-- Operational runs now require no pending commits, ensuring a cleaner workflow. [#2220](https://github.com/BSC-ES/autosubmit/issues/2220), [PR](https://github.com/BSC-ES/autosubmit/pull/2293)
 
 ### 4.1.13: Dependencies bug fixes, regression tests
 
@@ -95,7 +198,7 @@
 
 **Others:**
 - All autosubmit projects moved to Github.
-- Added Github actions for CI/CD.
+- Added GitHub actions for CI/CD.
 
 4.1.11 - Enhancements, New Features, Documentation, and Bug Fixes
 =================================================================
@@ -151,7 +254,6 @@ Others:
 - #1322: Autosubmit now has a DockerHub organization.
 - #1123: Profiler can now be stopped.
 
-
 4.1.10 - Hotfix
 ===============
 - Fixed an issue with the performance of the log retrieval.
@@ -167,14 +269,12 @@ Others:
 - Fixes an issue with dependency not being linked.
 - Docs improved.
 
-
 4.1.8 - Bug fixes.
 ==================
 - Fixed an issue with a socket connection left open.
 - Fixed an issue with log recovery being disabled by default.
 - Added exclusive parameter
 - Fixed some X11 routines called by default
-
 
 4.1.7 - X11, Migrate, script and Bug fixes
 ==========================================
@@ -222,9 +322,6 @@ Others:
 - Improved error clarity.
 - Added RO-Crate.
 - Added Calendar for splits.
-
-
-
 
 4.1.2 - Bug fixes
 =================

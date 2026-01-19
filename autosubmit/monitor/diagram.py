@@ -33,7 +33,7 @@ from typing_extensions import LiteralString
 from autosubmit.job.job import Job
 from autosubmit.statistics.jobs_stat import JobStat
 from autosubmit.statistics.statistics import Statistics
-from log.log import Log
+from autosubmit.log.log import Log
 
 """Diagram generator."""
 
@@ -178,7 +178,7 @@ def create_stats_report(
             job_section_output_file,
             headers
         )
-        Log.result(f'Section Summary created')
+        Log.result('Section Summary created')
     if jobs_summary:
         jobs_data = _get_job_list_data(jobs_list, exp_stats.jobs_stat)
         jobs_output_file = output_file.replace("statistics", "jobs_summary")
@@ -194,7 +194,7 @@ def create_stats_report(
             jobs_output_file,
             headers
         )
-        Log.result(f'Jobs Summary created')
+        Log.result('Jobs Summary created')
 
     with PdfPages(output_file) as pdf:
         for figure_number in plt.get_fignums():

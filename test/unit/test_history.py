@@ -28,7 +28,7 @@ from autosubmit.history.internal_logging import Logging
 from autosubmit.history.platform_monitor.slurm_monitor import SlurmMonitor
 from autosubmit.history.strategies import StraightWrapperAssociationStrategy, GeneralizedWrapperDistributionStrategy, \
     PlatformInformationHandler
-from autosubmitconfigparser.config.basicconfig import BasicConfig
+from autosubmit.config.basicconfig import BasicConfig
 
 EXPID_TT00_SOURCE = "test_database.db~"
 EXPID_TT01_SOURCE = "test_database_no_run.db~"
@@ -49,10 +49,10 @@ class TestExperimentHistory:
     #   cls.exp = ExperimentHistory("tt00") # example database
     def setup_method(self):
         source_path_tt00 = os.path.join(JOBDATA_DIR, EXPID_TT00_SOURCE)
-        self.target_path_tt00 = os.path.join(JOBDATA_DIR, "job_data_{0}.db".format(EXPID))
+        self.target_path_tt00 = os.path.join(JOBDATA_DIR, f"job_data_{EXPID}.db")
         copy2(source_path_tt00, self.target_path_tt00)
         source_path_tt01 = os.path.join(JOBDATA_DIR, EXPID_TT01_SOURCE)
-        self.target_path_tt01 = os.path.join(JOBDATA_DIR, "job_data_{0}.db".format(EXPID_NONE))
+        self.target_path_tt01 = os.path.join(JOBDATA_DIR, f"job_data_{EXPID_NONE}.db")
         copy2(source_path_tt01, self.target_path_tt01)
         self.job_list = [
             job("a29z_20000101_fc2_1_POST", "2000-01-01 00:00:00", "POST", "COMPLETED", ""),
@@ -310,7 +310,7 @@ class TestExperimentHistory:
         NCPUS = 128
         PLATFORM_NAME = "marenostrum4"
         JOB_ID = 101
-        inserted_job_data_dc_submit = exp_history.write_submit_time(JOB_NAME, time.time(), "SUBMITTED", NCPUS, "00:30",
+        exp_history.write_submit_time(JOB_NAME, time.time(), "SUBMITTED", NCPUS, "00:30",
                                                                     "debug", "20000101", "fc2", "SIM", 1, PLATFORM_NAME,
                                                                     JOB_ID, "bsc_es", 1, "")
         inserted_job_data_dc = exp_history.write_start_time(JOB_NAME, time.time(), "RUNNING", NCPUS, "00:30", "debug",
@@ -333,7 +333,7 @@ class TestLogging:
         message = "No Message"
         try:
             raise Exception("Setup test exception")
-        except Exception as e:
+        except Exception:
             message = traceback.format_exc()
         self.log = Logging("tt00")
         self.exp_message = "Exception message"

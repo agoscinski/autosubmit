@@ -24,7 +24,7 @@ from subprocess import check_output
 import pytest
 
 from autosubmit.scripts.autosubmit import main
-from log.log import AutosubmitCritical
+from autosubmit.log.log import AutosubmitCritical
 
 _EXPID = 't000'
 
@@ -161,22 +161,15 @@ def test_clean_git_project(
     """
     mocked_log = mocker.patch('autosubmit.autosubmit.Log')
 
-    # TODO: Bug in AutosubmitConfigParser, can be deleted once it's fixed,
-    #       https://github.com/BSC-ES/autosubmit-config-parser/issues/87.
-    mocked_autosubmit_config = mocker.patch('autosubmit.autosubmit.AutosubmitConfig.set_git_project_commit')
-    mocked_autosubmit_config.return_value = True
-
-    mocked_autosubmit_git = mocker.patch('autosubmit.autosubmit.AutosubmitGit')
-    mocked_autosubmit_git_obj = mocker.MagicMock()
-    mocked_autosubmit_git.return_value = mocked_autosubmit_git_obj
-    mocked_autosubmit_git_obj.clean_git.return_value = clean_git_return
+    mocker.patch('autosubmit.autosubmit.clean_git', return_value=clean_git_return)
 
     git_project = Path(tmp_path / 'tmp_git_project')
     git_project.mkdir()
     Path(git_project, 'test.sh').touch()
 
     chdir(git_project)
-    check_output(['git', 'init', '--initial-branch=test'])
+    check_output(['git', 'init'])
+    check_output(['git', 'checkout', '-b', 'test'])
     check_output(['git', 'add', '.'])
     check_output(['git', 'commit', '-m', 'Initial commit'])
 

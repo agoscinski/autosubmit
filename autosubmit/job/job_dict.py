@@ -1,33 +1,29 @@
-#!/usr/bin/env python3
-import copy
-
-# Copyright 2017-2020 Earth Sciences Department, BSC-CNS
-
+# Copyright 2015-2025 Earth Sciences Department, BSC-CNS
+#
 # This file is part of Autosubmit.
-
+#
 # Autosubmit is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-
+#
 # Autosubmit is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
+import datetime
+import re
 
 from bscearth.utils.date import date2str
 
 from autosubmit.job.job import Job
-from autosubmit.job.job_utils import get_split_size_unit, get_split_size, calendar_chunk_section
 from autosubmit.job.job_common import Status
-import datetime
-
-import re
-from log.log import AutosubmitCritical
+from autosubmit.job.job_utils import calendar_chunk_section
+from autosubmit.log.log import AutosubmitCritical
 
 
 class DicJobs:
@@ -410,7 +406,7 @@ class DicJobs:
                 final_jobs_list_special = []
                 if "*" in one_to_one_splits and not skip_one_to_one:
                     easier_to_filter = "," + one_to_one_splits + ","
-                    matches = re.findall(rf"\\[0-9]+", easier_to_filter)
+                    matches = re.findall(r"\\[0-9]+", easier_to_filter)
                     if len(matches) > 0:  # get *\\
 
                         split_slice = int(matches[0].split("\\")[1])
@@ -505,7 +501,7 @@ class DicJobs:
             try:
                 jobs_flattened = [job for jobs_to_flatten in jobs for job in jobs_to_flatten]
                 jobs = jobs_flattened
-            except TypeError as e:
+            except TypeError:
                 pass
         if sort_string:
             # I want to have first chunks then member then date to easily filter later on

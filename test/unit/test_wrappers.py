@@ -15,33 +15,32 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-from collections import OrderedDict
-
 import copy
 import inspect
-import mock
-import pytest
 import shutil
 import tempfile
-from mock import MagicMock
+from collections import OrderedDict
 from pathlib import Path
 from random import randrange
 
-import log.log
+import mock
+import pytest
+from mock import MagicMock
+
+from autosubmit.config.yamlparser import YAMLParserFactory
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_dict import DicJobs
 from autosubmit.job.job_list import JobList
-from autosubmit.job.job_list_persistence import JobListPersistenceDb
 from autosubmit.job.job_list_persistence import JobListPersistencePkl
 from autosubmit.job.job_packager import JobPackager
 from autosubmit.job.job_packages import JobPackageHorizontal, JobPackageHorizontalVertical, \
     JobPackageVerticalHorizontal, JobPackageSimple
 from autosubmit.job.job_packages import JobPackageVertical
 from autosubmit.job.job_utils import Dependency
+from autosubmit.log.log import AutosubmitCritical
 from autosubmit.platforms.slurmplatform import SlurmPlatform
-from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
-from log.log import AutosubmitCritical
+from autosubmit.platforms.wrappers.wrapper_builder import SrunVerticalHorizontalWrapperBuilder
 
 """Tests for wrappers."""
 
@@ -1757,12 +1756,12 @@ class TestWrappers:
             for p in packages_v:
                 p2, run_first = self.job_packager.check_jobs_to_run_first(p)
                 assert p2.jobs == p.jobs
-                assert run_first == False
+                assert not run_first
             self.job_packager._jobs_list.jobs_to_run_first = [d1_m1_1_s2, d1_m1_1_s3]
             for p in packages_v:
                 p2, run_first = self.job_packager.check_jobs_to_run_first(p)
                 assert p2.jobs == [d1_m1_1_s2, d1_m1_1_s3]
-                assert run_first == True
+                assert run_first
 
     def test_calculate_wrapper_bounds(self):
         with mock.patch("autosubmit.job.job.Job.update_parameters", return_value={}):
@@ -1984,16 +1983,16 @@ class TestWrappers:
             assert max_jobs_to_submit2 == 0
             assert len(packages_to_submit2) == 2
             for p in packages_to_submit2:
-                assert type(p) == JobPackageSimple
+                assert isinstance(p, JobPackageSimple)
 
             self.job_packager.wrapper_policy["WRAPPER_V"] = "mixed"
             packages_to_submit = []
-            with pytest.raises(log.log.AutosubmitCritical):
+            with pytest.raises(AutosubmitCritical):
                 self.job_packager.check_packages_respect_wrapper_policy(packages_h, packages_to_submit,
                                                                         max_jobs_to_submit, wrapper_limits)
             self.job_packager.wrapper_policy["WRAPPER_V"] = "strict"
             packages_to_submit = []
-            with pytest.raises(log.log.AutosubmitCritical):
+            with pytest.raises(AutosubmitCritical):
                 self.job_packager.check_packages_respect_wrapper_policy(packages_h, packages_to_submit,
                                                                         max_jobs_to_submit, wrapper_limits)
 
@@ -2117,7 +2116,6 @@ class TestWrappers:
 class FakeBasicConfig:
     def __init__(self):
         pass
-
     def props(self):
         pr = {}
         for name in dir(self):
@@ -2134,8 +2132,6 @@ class FakeBasicConfig:
     LOCAL_PROJ_DIR = '/dummy/local/proj/dir'
     DEFAULT_PLATFORMS_CONF = ''
     DEFAULT_JOBS_CONF = ''
-
-
 @pytest.fixture(scope='function')
 def setup(autosubmit_config, tmpdir):
     experiment_id = 'random-id'
@@ -2299,3 +2295,31 @@ def test_process_not_wrappeable_packages_more_jobs_of_that_section(setup, not_wr
         result = job_packager.process_not_wrappeable_packages(not_wrappeable_package_info, packages_to_submit,
                                                               max_jobs_to_submit, wrapper_limits)
     assert result == expected
+
+
+def test_build_imports():
+    kwargs:dict = {'header_directive': True, 'jobs_scripts': ["test"], 'threads': 2, 'num_processors': True,
+                   'num_processors_value': True, 'expid': True}
+    vh_wrapper = SrunVerticalHorizontalWrapperBuilder(**kwargs).build_imports()
+    assert type(vh_wrapper) is str and '("t" "e" "s" "t" )' in vh_wrapper
+
+
+def test_build_srun_launcher():
+    kwargs:dict = {'header_directive': True, 'jobs_scripts': ["test"], 'threads': 2, 'num_processors': True,
+                   'num_processors_value': True, 'expid': True}
+    vh_wrapper = SrunVerticalHorizontalWrapperBuilder(**kwargs).build_srun_launcher("job1, job2, job3, job4, job5")
+    assert type(vh_wrapper) is str and "job1, job2, job3, job4, job5" in vh_wrapper
+
+
+# TODO This test was created but getting stuck at many different issues, it'll be dealt with later
+# def test_calculate_wrapper_het_header():
+#     header = SlurmHeader()
+#     wr_job = Object
+#     wr_job.name = "wrappers_test"
+#     wr_job._platform = Object
+#     wr_job._platform.remote_log_dir = "test_platform"
+#     wr_job.wallclock = "01:00"
+#     wr_job.het = {'HETSIZE': {'CURRENT_QUEUE': ''}, 'CURRENT_QUEUE': '', 'NODES': [2], 'PARTITION': [''], 'CURRENT_PROJ': '', 'EXCLUSIVE': 'false',
+#                   'MEMORY': '', 'MEMORY_PER_TASK': 2, 'NUMTHREADS': '', 'RESERVATION': '', 'CUSTOM_DIRECTIVES': '', 'TASKS': '',
+#                   }
+#     header.calculate_wrapper_het_header(wr_job=wr_job)

@@ -1,19 +1,17 @@
-#!/usr/bin/env python3
-
-# Copyright 2015-2020 Earth Sciences Department, BSC-CNS
-
+# Copyright 2015-2025 Earth Sciences Department, BSC-CNS
+#
 # This file is part of Autosubmit.
-
+#
 # Autosubmit is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-
+#
 # Autosubmit is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -30,22 +28,26 @@ class WrapperDirector:
     """
     def __init__(self):
         self._builder = None
+
     def construct(self, builder):
         self._builder = builder
 
         header = self._builder.build_header()
         job_thread = self._builder.build_job_thread()
-        #if "bash" not in header[0:15]:
+        # if "bash" not in header[0:15]:
 
         main = self._builder.build_main()
-        #else:
+        # else:
         #    nodes,main = self._builder.build_main() #What to do with nodes?
         # change to WrapperScript object
         wrapper_script = header + job_thread + main
         wrapper_script = wrapper_script.replace("_NEWLINE_", '\\n')
 
         return wrapper_script
+
+
 class WrapperBuilder(object):
+
     def __init__(self, **kwargs):
         if "retrials" in list(kwargs.keys()):
             self.retrials = kwargs['retrials']
@@ -62,22 +64,29 @@ class WrapperBuilder(object):
         self.exit_thread = ''
         if "wallclock_by_level" in list(kwargs.keys()):
             self.wallclock_by_level = kwargs['wallclock_by_level']
+        self.working_dir = kwargs.get('working_dir', '')
+
 
     def build_header(self):
         return textwrap.dedent(self.header_directive) + self.build_imports()
 
-    def build_imports(self):
-        pass
+    def build_imports(self) -> str:
+        pass  # pragma: no cover
+
     def build_job_thread(self):
-        pass
+        pass  # pragma: no cover
+
     # hybrids
     def build_joblist_thread(self, **kwargs):
-        pass
+        pass  # pragma: no cover
+
     # horizontal and hybrids
     def build_nodes_list(self):
-        pass
+        pass  # pragma: no cover
+
     def build_machinefiles(self):
-        pass
+        pass  # pragma: no cover
+
     def get_machinefile_function(self):
         machinefile_function = ""
         if 'MACHINEFILES' in self.jobs_resources and self.jobs_resources['MACHINEFILES']:
@@ -90,22 +99,31 @@ class WrapperBuilder(object):
             else:
                 return self.build_machinefiles_standard()
         return machinefile_function
+
     def build_machinefiles_standard(self):
-        pass
+        pass  # pragma: no cover
+
     def build_machinefiles_components(self):
-        pass
+        pass  # pragma: no cover
+
     def build_machinefiles_components_alternate(self):
-        pass
+        pass  # pragma: no cover
+
     def build_sequential_threads_launcher(self, **kwargs):
-        pass
+        pass  # pragma: no cover
+
     def build_parallel_threads_launcher(self, **kwargs):
-        pass
+        pass  # pragma: no cover
+
     # all should override -> abstract!
     def build_main(self):
-        pass
+        pass  # pragma: no cover
+
     def _indent(self, text, amount, ch=' '):
         padding = amount * ch
         return ''.join(padding + line for line in text.splitlines(True))
+
+
 class PythonWrapperBuilder(WrapperBuilder):
     def get_random_alphanumeric_string(self,letters_count, digits_count):
         sample_str = ''.join((random.choice(string.ascii_letters) for i in range(letters_count)))
@@ -154,15 +172,18 @@ class PythonWrapperBuilder(WrapperBuilder):
                 Thread.__init__(self)
                 self.template = template
                 self.id_run = id_run
-
+                
             def run(self):
                 jobname = self.template.replace('.cmd', '')
-                out = str(self.template) + ".out." + str(0)
-                err = str(self.template) + ".err." + str(0)
+                out = f"{0}/{{str(self.template)}}.out.0"
+                err = f"{0}/{{str(self.template)}}.err.0"
+                template_path = f"{0}/{{self.template}}"
                 print(out+"\\n")
-                command = "./" + str(self.template) + " " + str(self.id_run) + " " + os.getcwd()
-                (self.status) = getstatusoutput(command + " > " + out + " 2> " + err)
-        """).format('\n'.ljust(13))
+                print(err+"\\n")
+                command = f"chmod +x {{template_path}}; {{template_path}} > {{out}} 2> {{err}}"
+                print(command)
+                (self.status) = getstatusoutput(command)
+        """).format(self.working_dir, '\n'.ljust(13))
 
     # hybrids
     def build_joblist_thread(self):
@@ -907,18 +928,18 @@ class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
             for script in scripts:
                 built_array+= str("\"" + script + "\"") + " "
             built_array += ")"
-            scripts_bash+=textwrap.dedent("""
-            declare -a scripts_{0}={1}
-            """).format(str(list_index),str(built_array), '\n'.ljust(13))
-            scripts_array_vars += "\"scripts_{0}\" ".format(list_index)
-            scripts_array_index += "\"0\" ".format(list_index)
+            scripts_bash+=textwrap.dedent(f"""
+            declare -a scripts_{str(list_index)}={str(built_array)}
+            """).format('\n'.ljust(13))
+            scripts_array_vars += f"\"scripts_{list_index}\" "
+            scripts_array_index += f"\"{list_index}\" "
             list_index += 1
         scripts_array_vars += ")"
         scripts_array_index += ")"
-        scripts_bash += textwrap.dedent("""
-                   declare -a scripts_list={0}
-                   declare -a scripts_index={1}
-                   """).format(str(scripts_array_vars),str(scripts_array_index), '\n'.ljust(13))
+        scripts_bash += textwrap.dedent(f"""
+                   declare -a scripts_list={str(scripts_array_vars)}
+                   declare -a scripts_index={str(scripts_array_index)}
+                   """).format('\n'.ljust(13))
 
         total_threads = float(len(self.job_scripts))
         n_threads = float(self.threads)
@@ -945,9 +966,9 @@ class SrunVerticalHorizontalWrapperBuilder(SrunWrapperBuilder):
         for mask in srun_mask_values:
             mask_array += str("\"" + mask + "\"") + " "
         mask_array += ")"
-        scripts_bash += textwrap.dedent("""
-                declare -a job_mask_array={0}
-                """).format(mask_array, '\n'.ljust(13))
+        scripts_bash += textwrap.dedent(f"""
+                declare -a job_mask_array={mask_array}
+                """).format('\n'.ljust(13))
 
         return scripts_bash
 

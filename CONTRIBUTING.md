@@ -88,14 +88,63 @@ $ sudo setfacl --modify user:$USER:rw /var/run/docker.sock
 # $ sudo setfacl --remove user:$USER /var/run/docker.sock
 ```
 
+You can follow the steps below if you would like to have a Slurm container
+locally for the tests marked with `slurm`. This step is optional as each test
+launches the container in an isolated manner.
+
+```bash
+$ docker pull autosubmit/slurm-openssh-container:25-05-0-1
+```
+
+```bash
+$ docker run --rm -it --cgroupns=host --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:rw --hostname slurmctld --name slurm-container -p 2222:2222 autosubmit/slurm-openssh-container:25-05-0-1
+```
+
+```bash
+$ docker cp slurm-container:/root/.ssh/container_root_pubkey $HOME/.ssh/container_root_pubkey || echo "Failed to docker cp SSH key"
+```
+
+```bash
+$ chmod 600 $HOME/.ssh/container_root_pubkey
+```
+
+```bash
+$ cat <<- EOF >> $HOME/.ssh/config
+Host localDocker
+    HostName localhost
+    User root
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    IdentityFile $HOME/.ssh/container_root_pubkey
+    Port 2222
+    ForwardX11 yes
+EOF
+```
+
 Then you can run all the tests, with
 
 ```bash
 $ pytest -m ""
 ```
 
-or just the tests that require Docker:
+or just the tests that require Docker,
 
 ```bash
 $ pytest -m 'docker'
 ```
+
+or just the tests that require Slurm:
+
+```bash
+$ pytest -m 'slurm'
+```
+
+## Random ports
+
+Some tests require random ports. To acquire a free random port, we rely
+on a Linux feature where we create a socket without specifying address
+or port number. The socket created has a random free port in the system.
+We close the socket and use that port for our next test. Chances or the
+port being used by multiple tests is smaller than using random or ranges.
+
+See `test/integration/test_utils/networking.py` for more.

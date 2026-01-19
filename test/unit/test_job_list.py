@@ -15,24 +15,25 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Tests for the ``JobList`` class."""
+
 import shutil
 from copy import copy
 from pathlib import Path
 from random import randrange
+from typing import Callable
 
 import networkx
 import pytest
-from autosubmitconfigparser.config.yamlparser import YAMLParserFactory
 from networkx import DiGraph  # type: ignore
 
+from autosubmit.config.yamlparser import YAMLParserFactory
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
-from autosubmit.job.job_common import Type
 from autosubmit.job.job_dict import DicJobs
 from autosubmit.job.job_list import JobList
 from autosubmit.job.job_list_persistence import JobListPersistencePkl
-
-"""Tests for the ``JobList`` class."""
+from autosubmit.job.template import Language
 
 _EXPID = 'a000'
 
@@ -45,8 +46,12 @@ def as_conf(autosubmit_config):
     })
 
 
+# TODO: this file has ``setup_job_list`` and ``job_list`` that create job lists.
+#  Maybe merge/make it into a function?
+
+# noinspection PyProtectedMember
 @pytest.fixture(scope='function')
-def setup_job_list(as_conf, tmpdir, mocker):
+def job_list_with_repeated_ids(as_conf, tmpdir, mocker):
     job_list = JobList(_EXPID, as_conf, YAMLParserFactory(), JobListPersistencePkl())
     dummy_serial_platform = mocker.MagicMock()
     dummy_serial_platform.name = 'serial'
@@ -65,53 +70,63 @@ def setup_job_list(as_conf, tmpdir, mocker):
     job = Job("job3", "3", Status.COMPLETED, 0)
     job.section = "SECTION2"
     job_list._job_list.append(job)
+    # add some jobs with the same ID
+    job = Job("SIM-1", "100", Status.RUNNING, 0)
+    job.section = "SIM"
+    job_list._job_list.append(job)
+    job = Job("SIM-2", "100", Status.RUNNING, 0)
+    job.section = "SIM"
+    job_list._job_list.append(job)
+    job = Job("SIM-3", "100", Status.RUNNING, 0)
+    job.section = "SIM"
+    job_list._job_list.append(job)
     return job_list
 
 
 @pytest.fixture
-def jobs_as_dict():
+def jobs_as_dict(next_job_id):
     return {
         Status.COMPLETED: [
-            _create_dummy_job_with_status(Status.COMPLETED),
-            _create_dummy_job_with_status(Status.COMPLETED),
-            _create_dummy_job_with_status(Status.COMPLETED),
-            _create_dummy_job_with_status(Status.COMPLETED)
+            _create_dummy_job_with_status(next_job_id(), Status.COMPLETED),
+            _create_dummy_job_with_status(next_job_id(), Status.COMPLETED),
+            _create_dummy_job_with_status(next_job_id(), Status.COMPLETED),
+            _create_dummy_job_with_status(next_job_id(), Status.COMPLETED)
         ],
         Status.SUBMITTED: [
-            _create_dummy_job_with_status(Status.SUBMITTED),
-            _create_dummy_job_with_status(Status.SUBMITTED),
-            _create_dummy_job_with_status(Status.SUBMITTED)
+            _create_dummy_job_with_status(next_job_id(), Status.SUBMITTED),
+            _create_dummy_job_with_status(next_job_id(), Status.SUBMITTED),
+            _create_dummy_job_with_status(next_job_id(), Status.SUBMITTED)
         ],
         Status.RUNNING: [
-            _create_dummy_job_with_status(Status.RUNNING),
-            _create_dummy_job_with_status(Status.RUNNING)
+            _create_dummy_job_with_status(next_job_id(), Status.RUNNING),
+            _create_dummy_job_with_status(next_job_id(), Status.RUNNING)
         ],
         Status.QUEUING: [
-            _create_dummy_job_with_status(Status.QUEUING)
+            _create_dummy_job_with_status(next_job_id(), Status.QUEUING)
         ],
         Status.FAILED: [
-            _create_dummy_job_with_status(Status.FAILED),
-            _create_dummy_job_with_status(Status.FAILED),
-            _create_dummy_job_with_status(Status.FAILED),
-            _create_dummy_job_with_status(Status.FAILED)
+            _create_dummy_job_with_status(next_job_id(), Status.FAILED),
+            _create_dummy_job_with_status(next_job_id(), Status.FAILED),
+            _create_dummy_job_with_status(next_job_id(), Status.FAILED),
+            _create_dummy_job_with_status(next_job_id(), Status.FAILED)
         ],
         Status.READY: [
-            _create_dummy_job_with_status(Status.READY),
-            _create_dummy_job_with_status(Status.READY),
-            _create_dummy_job_with_status(Status.READY)
+            _create_dummy_job_with_status(next_job_id(), Status.READY),
+            _create_dummy_job_with_status(next_job_id(), Status.READY),
+            _create_dummy_job_with_status(next_job_id(), Status.READY)
         ],
         Status.WAITING: [
-            _create_dummy_job_with_status(Status.WAITING),
-            _create_dummy_job_with_status(Status.WAITING)
+            _create_dummy_job_with_status(next_job_id(), Status.WAITING),
+            _create_dummy_job_with_status(next_job_id(), Status.WAITING)
         ],
         Status.UNKNOWN: [
-            _create_dummy_job_with_status(Status.UNKNOWN)
+            _create_dummy_job_with_status(next_job_id(), Status.UNKNOWN)
         ]
     }
 
 
 @pytest.fixture
-def job_list(as_conf, mocker, jobs_as_dict):
+def job_list_no_repeated_ids(as_conf, mocker, jobs_as_dict):
     parameters = {'fake-key': 'fake-value',
                   'fake-key2': 'fake-value2'}
     as_conf.load_parameters = mocker.Mock(return_value=parameters)
@@ -120,13 +135,13 @@ def job_list(as_conf, mocker, jobs_as_dict):
     job_list = JobList(_EXPID, as_conf, YAMLParserFactory(), joblist_persistence)
 
     for status, jobs in jobs_as_dict.items():
+        # noinspection PyProtectedMember
         job_list._job_list.extend(jobs)
     return job_list
 
 
-def _create_dummy_job_with_status(status):
-    job_name = str(randrange(999999, 999999999))
-    job_id = randrange(1, 999)
+def _create_dummy_job_with_status(job_id: int, status: int) -> Job:
+    job_name = f'job_{job_id}'
     job = Job(job_name, job_id, status, 0)
     job.type = randrange(0, 2)
     return job
@@ -158,6 +173,10 @@ def test_load(mocker, as_conf, empty_job_list):
     job_list = empty_job_list()
     job_list.changes = mocker.Mock(return_value=['random_section', 'random_section'])
     as_conf.detailed_deep_diff = mocker.Mock(return_value={})
+
+    Path(as_conf.basic_config.LOCAL_ROOT_DIR, _EXPID, 'pkl', f'job_list_{_EXPID}.pkl').touch()
+    Path(as_conf.basic_config.LOCAL_ROOT_DIR, _EXPID, 'pkl', f'job_list_{_EXPID}_backup.pkl').touch()
+
     # act
     job_list.generate(
         as_conf=as_conf,
@@ -168,10 +187,11 @@ def test_load(mocker, as_conf, empty_job_list):
         parameters=parameters,
         date_format='H',
         default_retrials=9999,
-        default_job_type=Type.BASH,
+        default_job_type=Language.BASH,
         wrapper_jobs={},
         new=True,
         create=True,
+        force=True,
     )
     job_list.save()
     # Test load
@@ -198,9 +218,9 @@ def test_load(mocker, as_conf, empty_job_list):
     assert job_list_to_load._job_list == job_list._job_list
 
 
-def test_get_job_list_returns_the_right_list(job_list):
-    other_job_list = job_list.get_job_list()
-    assert job_list._job_list == other_job_list
+def test_get_job_list_returns_the_right_list(job_list_no_repeated_ids):
+    other_job_list = job_list_no_repeated_ids.get_job_list()
+    assert job_list_no_repeated_ids._job_list == other_job_list
 
 
 @pytest.mark.parametrize(
@@ -216,13 +236,13 @@ def test_get_job_list_returns_the_right_list(job_list):
         Status.UNKNOWN
     ]
 )
-def test_get_function_returns(job_list, jobs_as_dict, status):
+def test_get_function_returns(job_list_no_repeated_ids, jobs_as_dict, status):
     """Test that the ``JobList`` object provided contains the correct jobs for each ``Status``."""
     status_text = Status.VALUE_TO_KEY[status].lower()
     # Here, ``Status.COMPLETED`` is ``int(5)``, so above we convert it to the text ``'COMPLETED'``.
     # Finally, we call the function ``job_list.get_completed()`` to retrieve completed jobs.
     # As the test is parametrized, we repeat for each state parameter.
-    jobs_in_state = getattr(job_list, f'get_{status_text}')()
+    jobs_in_state = getattr(job_list_no_repeated_ids, f'get_{status_text}')()
     expected_jobs_in_state = jobs_as_dict[status]
 
     assert len(jobs_in_state) == len(expected_jobs_in_state)
@@ -230,8 +250,8 @@ def test_get_function_returns(job_list, jobs_as_dict, status):
         assert expected_job in jobs_in_state
 
 
-def test_get_completed_returns_only_the_completed(job_list, jobs_as_dict):
-    completed = job_list.get_completed()
+def test_get_completed_returns_only_the_completed(job_list_no_repeated_ids, jobs_as_dict):
+    completed = job_list_no_repeated_ids.get_completed()
 
     expected_completed = jobs_as_dict[Status.COMPLETED]
 
@@ -240,8 +260,8 @@ def test_get_completed_returns_only_the_completed(job_list, jobs_as_dict):
         assert expected_job in completed
 
 
-def test_get_in_queue_returns_only_which_are_queuing_submitted_and_running(job_list, jobs_as_dict):
-    in_queue = job_list.get_in_queue()
+def test_get_in_queue_returns_only_which_are_queuing_submitted_and_running(job_list_no_repeated_ids, jobs_as_dict):
+    in_queue = job_list_no_repeated_ids.get_in_queue()
 
     queuing_job = jobs_as_dict[Status.QUEUING][0]
     running_job = jobs_as_dict[Status.RUNNING][0]
@@ -261,8 +281,8 @@ def test_get_in_queue_returns_only_which_are_queuing_submitted_and_running(job_l
     assert unknown_job in in_queue
 
 
-def test_get_active_returns_only_which_are_in_queue_ready_and_unknown(job_list, jobs_as_dict):
-    active = job_list.get_active()
+def test_get_active_returns_only_which_are_in_queue_ready_and_unknown(job_list_no_repeated_ids, jobs_as_dict):
+    active = job_list_no_repeated_ids.get_active()
 
     queuing_job = jobs_as_dict[Status.QUEUING][0]
     running_job = jobs_as_dict[Status.RUNNING][0]
@@ -288,37 +308,37 @@ def test_get_active_returns_only_which_are_in_queue_ready_and_unknown(job_list, 
     assert unknown_job in active
 
 
-def test_get_job_by_name_returns_the_expected_job(job_list, jobs_as_dict):
+def test_get_job_by_name_returns_the_expected_job(job_list_no_repeated_ids, jobs_as_dict):
     completed_jobs = jobs_as_dict[Status.COMPLETED]
     completed_job = completed_jobs[0]
-    job = job_list.get_job_by_name(completed_job.name)
+    job = job_list_no_repeated_ids.get_job_by_name(completed_job.name)
 
     assert completed_job == job
 
 
-def test_sort_by_name_returns_the_list_of_jobs_well_sorted(job_list):
-    sorted_by_name = job_list.sort_by_name()
+def test_sort_by_name_returns_the_list_of_jobs_well_sorted(job_list_no_repeated_ids):
+    sorted_by_name = job_list_no_repeated_ids.sort_by_name()
 
     for i in range(len(sorted_by_name) - 1):
         assert sorted_by_name[i].name <= sorted_by_name[i + 1].name
 
 
-def test_sort_by_id_returns_the_list_of_jobs_well_sorted(job_list):
-    sorted_by_id = job_list.sort_by_id()
+def test_sort_by_id_returns_the_list_of_jobs_well_sorted(job_list_no_repeated_ids):
+    sorted_by_id = job_list_no_repeated_ids.sort_by_id()
 
     for i in range(len(sorted_by_id) - 1):
         assert sorted_by_id[i].id <= sorted_by_id[i + 1].id
 
 
-def test_sort_by_type_returns_the_list_of_jobs_well_sorted(job_list):
-    sorted_by_type = job_list.sort_by_type()
+def test_sort_by_type_returns_the_list_of_jobs_well_sorted(job_list_no_repeated_ids):
+    sorted_by_type = job_list_no_repeated_ids.sort_by_type()
 
     for i in range(len(sorted_by_type) - 1):
         assert sorted_by_type[i].type <= sorted_by_type[i + 1].type
 
 
-def test_sort_by_status_returns_the_list_of_jobs_well_sorted(job_list):
-    sorted_by_status = job_list.sort_by_status()
+def test_sort_by_status_returns_the_list_of_jobs_well_sorted(job_list_no_repeated_ids):
+    sorted_by_status = job_list_no_repeated_ids.sort_by_status()
 
     for i in range(len(sorted_by_status) - 1):
         assert sorted_by_status[i].status <= sorted_by_status[i + 1].status
@@ -361,7 +381,7 @@ def test_that_create_method_makes_the_correct_calls(mocker, empty_job_list, as_c
         parameters=parameters,
         date_format='H',
         default_retrials=9999,
-        default_job_type=Type.BASH,
+        default_job_type=Language.BASH,
         wrapper_jobs={},
         new=True,
         create=True,
@@ -373,14 +393,14 @@ def test_that_create_method_makes_the_correct_calls(mocker, empty_job_list, as_c
     assert job_list._member_list == member_list
     assert job_list._chunk_list == list(range(1, num_chunks + 1))
 
-    cj_args, cj_kwargs = job_list._create_jobs.call_args  # type: ignore
-    assert 0 == cj_args[2]
+    cj_args, cj_kwargs = job_list._create_jobs.call_args
+    assert Language.BASH == cj_args[2]
 
     # _add_dependencies(date_list, member_list, chunk_list, dic_jobs, option="DEPENDENCIES"):
 
-    job_list._add_dependencies.assert_called_once_with(date_list, member_list, chunk_list, cj_args[0])  # type: ignore
+    job_list._add_dependencies.assert_called_once_with(date_list, member_list, chunk_list, cj_args[0])
     # Adding flag update structure
-    job_list.update_genealogy.assert_called_once_with()  # type: ignore
+    job_list.update_genealogy.assert_called_once_with()
 
     # job doesn't have job.parameters anymore TODO
     # for job in job_list._job_list:
@@ -394,14 +414,14 @@ def test_that_create_job_method_calls_dic_jobs_method_with_increasing_priority(m
     dic_mock.experiment_data = dict()
     dic_mock.experiment_data["JOBS"] = {'fake-section-1': {}, 'fake-section-2': {}}
     # act
-    JobList._create_jobs(dic_mock, 0, Type.BASH)
+    JobList._create_jobs(dic_mock, 0, Language.BASH)
 
     # arrange
-    dic_mock.read_section.assert_any_call('fake-section-1', 0, Type.BASH)
-    dic_mock.read_section.assert_any_call('fake-section-2', 1, Type.BASH)
+    dic_mock.read_section.assert_any_call('fake-section-1', 0, Language.BASH)
+    dic_mock.read_section.assert_any_call('fake-section-2', 1, Language.BASH)
 
 
-def test_run_member(job_list, mocker, as_conf, empty_job_list):
+def test_run_member(mocker, as_conf, empty_job_list):
     as_conf.experiment_data = {
         'PLATFORMS': {
             'fake-platform': {
@@ -441,7 +461,7 @@ def test_run_member(job_list, mocker, as_conf, empty_job_list):
         parameters=parameters,
         date_format='H',
         default_retrials=1,
-        default_job_type=Type.BASH,
+        default_job_type=Language.BASH,
         wrapper_jobs={},
         new=True,
         create=True,
@@ -457,7 +477,7 @@ def test_run_member(job_list, mocker, as_conf, empty_job_list):
     assert len(job_list_aux._job_list) == 0
 
 
-def test_create_dictionary(job_list, mocker, as_conf, empty_job_list):
+def test_create_dictionary(mocker, as_conf, empty_job_list):
     parameters = {'fake-key': 'fake-value',
                   'fake-key2': 'fake-value2'}
     as_conf.experiment_data = {
@@ -482,11 +502,7 @@ def test_create_dictionary(job_list, mocker, as_conf, empty_job_list):
     job_list.graph = graph
     # act
 
-    mock_get_submitter = mocker.patch('autosubmit.job.job_list._get_submitter', autospec=True)
-    mock_submitter = mock_get_submitter.return_value
-    mock_submitter.load_platforms = mocker.MagicMock()
-    mock_submitter.load_platforms.return_value = ["fake-platform"]
-    mock_submitter.platforms = None
+    mocker.patch('autosubmit.job.job_list.ParamikoSubmitter', autospec=True)
     job_list.generate(
         as_conf=as_conf,
         date_list=date_list,
@@ -496,7 +512,7 @@ def test_create_dictionary(job_list, mocker, as_conf, empty_job_list):
         parameters=as_conf.load_parameters(),
         date_format='H',
         default_retrials=1,
-        default_job_type=Type.BASH,
+        default_job_type=Language.BASH,
         wrapper_jobs={},
         new=True,
         create=True
@@ -563,7 +579,7 @@ def test_generate_job_list_from_monitor_run(as_conf, mocker, empty_job_list):
         parameters=parameters,
         date_format='H',
         default_retrials=9999,
-        default_job_type=Type.BASH,
+        default_job_type=Language.BASH,
         wrapper_jobs={},
         new=True,
         create=True,
@@ -580,7 +596,7 @@ def test_generate_job_list_from_monitor_run(as_conf, mocker, empty_job_list):
         parameters=parameters,
         date_format='H',
         default_retrials=9999,
-        default_job_type=Type.BASH,
+        default_job_type=Language.BASH,
         wrapper_jobs={},
         new=False,
         create=True,
@@ -589,7 +605,7 @@ def test_generate_job_list_from_monitor_run(as_conf, mocker, empty_job_list):
     # return False
     job_list2.update_from_file = mocker.Mock()
     job_list2.update_from_file.return_value = False
-    job_list2.update_list(as_conf, False)
+    job_list2.update_list(as_conf, store_change=False)
 
     # check that name is the same
     for index, job in enumerate(job_list._job_list):
@@ -611,13 +627,13 @@ def test_generate_job_list_from_monitor_run(as_conf, mocker, empty_job_list):
         parameters=parameters,
         date_format='H',
         default_retrials=9999,
-        default_job_type=Type.BASH,
+        default_job_type=Language.BASH,
         wrapper_jobs={},
         new=False,
     )
     job_list3.update_from_file = mocker.Mock()
     job_list3.update_from_file.return_value = False
-    job_list3.update_list(as_conf, False)
+    job_list3.update_list(as_conf, store_change=False)
     # assert
     # check that name is the same
     for index, job in enumerate(job_list._job_list):
@@ -647,14 +663,14 @@ def test_generate_job_list_from_monitor_run(as_conf, mocker, empty_job_list):
         parameters=parameters,
         date_format='H',
         default_retrials=9999,
-        default_job_type=Type.BASH,
+        default_job_type=Language.BASH,
         wrapper_jobs={},
         new=False,
         create=True,
     )
     # assert update_genealogy called with right values
     # When using an 4.0 experiment, the pkl has to be recreated and act as a new one.
-    job_list3.update_genealogy.assert_called_once_with()  # type: ignore
+    job_list3.update_genealogy.assert_called_once_with()
 
     # Test when the graph previous run has more jobs than the current run
     job_list3.graph.add_node("fake-node", job=job_list3._job_list[0])
@@ -668,7 +684,7 @@ def test_generate_job_list_from_monitor_run(as_conf, mocker, empty_job_list):
         parameters=parameters,
         date_format='H',
         default_retrials=9999,
-        default_job_type=Type.BASH,
+        default_job_type=Language.BASH,
         wrapper_jobs={},
         new=False,
     )
@@ -686,7 +702,7 @@ def test_generate_job_list_from_monitor_run(as_conf, mocker, empty_job_list):
         parameters=parameters,
         date_format='H',
         default_retrials=9999,
-        default_job_type=Type.BASH,
+        default_job_type=Language.BASH,
         wrapper_jobs={},
         new=False,
     )
@@ -697,22 +713,22 @@ def test_generate_job_list_from_monitor_run(as_conf, mocker, empty_job_list):
             assert job_list3.graph.nodes[node]["job"] in job_list3._job_list
 
 
-def test_find_and_delete_redundant_relations(job_list, mocker):
+def test_find_and_delete_redundant_relations(job_list_no_repeated_ids, mocker):
     problematic_jobs = {'SECTION': {'CHILD': ['parents_names', 'parents_names1', 'parents_names2'],
                                     'CHILD2': ['parents_names3', 'parents_names4']}}
     mock_job_list = mocker.patch('autosubmit.job.job_list.DiGraph.has_successor')
     # TODO: looks like a we have one assert here that's not called, either the last one in try, or the one in except
     try:
         mock_job_list.return_value = True
-        assert job_list.find_and_delete_redundant_relations(problematic_jobs) is None
+        assert job_list_no_repeated_ids.find_and_delete_redundant_relations(problematic_jobs) is None
         mock_job_list.return_value = False
-        assert job_list.find_and_delete_redundant_relations(problematic_jobs) is None
+        assert job_list_no_repeated_ids.find_and_delete_redundant_relations(problematic_jobs) is None
     except Exception as e:
         assert (f'Find and delete redundant relations ran into an '
                 f'Error deleting the relationship between parent and child: {e}')
 
 
-def test_normalize_to_filters(job_list):
+def test_normalize_to_filters(job_list_no_repeated_ids):
     """
     validating behaviour of _normalize_to_filters
     """
@@ -727,7 +743,7 @@ def test_normalize_to_filters(job_list):
 
     for filter_to in dict_filter:
         try:
-            job_list._normalize_to_filters(filter_to, filter_type)
+            job_list_no_repeated_ids._normalize_to_filters(filter_to, filter_type)
         except Exception as e:
             print(f'Unexpected exception raised: {e}')
             assert not bool(e)
@@ -786,9 +802,9 @@ def test_manage_dependencies(as_conf, empty_job_list):
         "ban_job1"
     ]
 )
-def test_get_jobs_by_section(setup_job_list, section_list, banned_jobs, get_only_non_completed, expected_length,
-                             expected_section):
-    result = setup_job_list.get_jobs_by_section(section_list, banned_jobs, get_only_non_completed)
+def test_get_jobs_by_section(job_list_with_repeated_ids, section_list, banned_jobs, get_only_non_completed,
+                             expected_length, expected_section):
+    result = job_list_with_repeated_ids.get_jobs_by_section(section_list, banned_jobs, get_only_non_completed)
     assert len(result) == expected_length
     assert all(job.section == expected_section for job in result)
 
@@ -802,13 +818,76 @@ def test_get_jobs_by_section(setup_job_list, section_list, banned_jobs, get_only
         (False, False)
     ]
 )
-def test_retrieve_times(job_list, jobs_as_dict, tmp_path, make_exception, seconds):
-    """testing function retrieve_times from job_list."""
+def test_retrieve_times(job_list_no_repeated_ids, jobs_as_dict, tmp_path, make_exception, seconds):
+    """testing function retrieve_times from ``job_list_no_repeated_ids``."""
 
     for completed_jobs in jobs_as_dict.values():
         for job in completed_jobs:
-            job = job_list.get_job_by_name(job.name)
-            retrieve_data = job_list.retrieve_times(job.status, job.name, job._tmp_path, make_exception=make_exception,
-                                                    job_times=None, seconds=seconds, job_data_collection=None)
+            job = job_list_no_repeated_ids.get_job_by_name(job.name)
+            retrieve_data = job_list_no_repeated_ids.retrieve_times(
+                job.status, job.name, job._tmp_path, make_exception=make_exception, job_times=None,
+                seconds=seconds, job_data_collection=None)
             assert retrieve_data.name == job.name
             assert retrieve_data.status == Status.VALUE_TO_KEY[job.status]
+
+
+@pytest.mark.parametrize(
+    'job_list_fixture,expected_jobs_length',
+    [
+        pytest.param(
+            'job_list_no_repeated_ids',
+            {
+                0: 1,
+                1: 1,
+                2: 1,
+                3: 1,
+                4: 1,
+                5: 1,
+                6: 1
+            }
+        ),
+        pytest.param(
+            'job_list_with_repeated_ids',
+            {
+                0: 3
+            }),
+        pytest.param(
+            'empty_job_list',
+            {}
+        )
+    ],
+    ids=[
+        "A job list with no repeated IDs",
+        "A job list with repeated IDs",
+        "An empty job list"
+    ]
+)
+def test_get_in_queue_grouped_id(
+        job_list_fixture: str,
+        expected_jobs_length: dict[int, int],
+        mocker,
+        request
+):
+    """Unit test for ``JobList.get_in_queue_grouped_id()``."""
+    job_list = request.getfixturevalue(job_list_fixture)
+    if isinstance(job_list, Callable):
+        job_list = job_list()
+    platform = mocker.MagicMock()
+    platform.name = 'dummy_platform'
+    platform.serial_platform = platform
+
+    for job in job_list._job_list:
+        job.platform = platform
+
+    jobs_by_id: dict[str, list[Job]] = job_list.get_in_queue_grouped_id(platform)
+
+    assert len(jobs_by_id) == len(expected_jobs_length)
+
+    # In GH bug 2463 we got lists when not the same ID, but a single element
+    # if we had a repeated ID. This was fixed in that issue, thus this assertion.
+    assert all([isinstance(job, list) for job in jobs_by_id.values()])
+
+    for idx, length in expected_jobs_length.items():
+        jobs_by_id_list = list(jobs_by_id.values())
+        section_jobs = jobs_by_id_list[idx]
+        assert len(section_jobs) == length

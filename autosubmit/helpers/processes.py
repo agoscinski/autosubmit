@@ -11,6 +11,9 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
 from contextlib import suppress
@@ -20,7 +23,7 @@ from typing import List, Optional
 
 from psutil import process_iter, ZombieProcess
 
-from log.log import Log
+from autosubmit.log.log import Log
 
 """Functions to handle linux processes."""
 
@@ -80,9 +83,9 @@ def _match_autosubmit_cmdline(cmdline: List[str], command='run', expid: Optional
     'a000'
     >>> _match_autosubmit_cmdline(['autosubmit', '-lc', 'DEBUG', 'run', 'a001'])
     'a001'
-    >>> _match_autosubmit_cmdline(['autosubmit', '-lc', 'DEBUG', 'run', '--notransitive', 'a000'])
+    >>> _match_autosubmit_cmdline(['autosubmit', '-lc', 'DEBUG', 'run', '--update_version', 'a000'])
     'a000'
-    >>> _match_autosubmit_cmdline(['autosubmit', '-lc', 'DEBUG', 'run', '--notransitive', 'a000'], 'run', None)
+    >>> _match_autosubmit_cmdline(['autosubmit', '-lc', 'DEBUG', 'run', '--update_version', 'a000'], 'run', None)
     'a000'
     >>> _match_autosubmit_cmdline(['/home/panda/envs/autosubmit/venv/bin/autosubmit', 'create', 'a000'], 'create')
     'a000'
@@ -94,6 +97,10 @@ def _match_autosubmit_cmdline(cmdline: List[str], command='run', expid: Optional
 
     >>> _match_autosubmit_cmdline(['autosubmit', 'running', 'a000'])
 
+    >>> _match_autosubmit_cmdline(['autosubmit', 'a000', 'run'])
+
+    >>> _match_autosubmit_cmdline(['autosubmit', 'run', 'a001'])
+    'a001'
     >>> _match_autosubmit_cmdline(['autosubmit', 'run', 'experiment'])
 
     >>> _match_autosubmit_cmdline(['autosubmit', 'run', 'a000'], 'create')
@@ -128,9 +135,6 @@ def _match_autosubmit_cmdline(cmdline: List[str], command='run', expid: Optional
         return None
 
     if filtered_list[1] != command:
-        return None
-
-    if not _match_expid(filtered_list[2]):
         return None
 
     return filtered_list[2]

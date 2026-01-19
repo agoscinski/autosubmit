@@ -15,12 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-import pytest
 from pathlib import Path
 from textwrap import dedent
 from typing import Callable
 
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig
+from autosubmit.config.configcommon import AutosubmitConfig
+import pytest
 
 
 def _get_script_files_path() -> Path:
@@ -90,7 +90,7 @@ def _write_test_files(expid, local_root_dir: Path):
     # add a job of each platform type
     with jobs_path.open('w') as f:
         f.write(
-            dedent(f"""\
+            dedent("""\
                 JOBS:
                     nodes:
                         SCRIPT: |
@@ -192,7 +192,7 @@ def test_scheduler_job_types(scheduler, job_type, autosubmit, autosubmit_exp: Ca
     :param job_type: Wrapped or not
     """
 
-    exp = autosubmit_exp()
+    exp = autosubmit_exp(include_jobs=True)
     expid = exp.expid
     as_conf: AutosubmitConfig = exp.as_conf
 
@@ -230,13 +230,16 @@ def test_scheduler_job_types(scheduler, job_type, autosubmit, autosubmit_exp: Ca
     if not expected_data:
         assert False, f"Could not find the expected data for {scheduler} and {job_type}"
 
+    # Replace the expid
+    expected_data = expected_data.replace('t000', expid)
+
     # Get the actual default parameters for the scheduler
     if job_type == "DEFAULT":
         actual = Path(exp_path, f"tmp/{expid}_BASE_{scheduler}.cmd").read_text()
     elif job_type == "NODES":
         actual = Path(exp_path, f"tmp/{expid}_NODES_{scheduler}.cmd").read_text()
     else:
-        for asthread in Path(exp_path, f"tmp").glob(f"*ASThread_WRAP_{job_type}_[0-9]*.cmd"):
+        for asthread in Path(exp_path, "tmp").glob(f"*ASThread_WRAP_{job_type}_[0-9]*.cmd"):
             actual = asthread.read_text()
             break
         else:

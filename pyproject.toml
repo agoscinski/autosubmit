@@ -46,26 +46,27 @@ classifiers = [
 dependencies = [
     "xlib==0.21",
     "bscearth.utils<=0.5.2",
-    "requests<=2.32.4",
-    "networkx<=3.2.1",
-    "portalocker<=3.1.1",
+    "requests<=2.32.5",
+    "networkx<=3.6.1",
+    "portalocker<=3.2.0",
     "paramiko>=3.5.0",
-    "pyparsing==3.2.3",
-    "matplotlib<=3.9.4",
-    "typing_extensions==4.*",
-    "psutil<=7.0.0",
+    "pyparsing==3.3.1",
+    "matplotlib<=3.10.8",
+    "psutil<=7.2.1",
     "py3dotplus==1.1.0",
     "numpy<3",
     "rocrate==0.*",
-    "autosubmitconfigparser==1.0.79",
     "configparser",
     "setproctitle",
-    "invoke>=2.0"
-    # 'sqlalchemy[mypy]' # TODO: pending Postgres MR
+    "invoke>=2.0",
+    "SQLAlchemy~=2.0.23",
+    "ruamel.yaml==0.19.1",
+    "configobj",
+    "configparser"
 ]
 
 [project.urls]
-Homepage = "https://www.bsc.es/projects/earthscience/autosubmit/" 
+Homepage = "https://www.bsc.es/projects/earthscience/autosubmit/"
 Documentation = "https://autosubmit.readthedocs.io/"
 "Download Link" = "https://earth.bsc.es/wiki/doku.php?id=tools:autosubmit"
 
@@ -76,35 +77,45 @@ readme = {file = "README_PIP.md"}
 [project.optional-dependencies]
 postgres = ["psycopg2"]
 tests = [
-    "pytest>=8.2,<8.5",
+    # TODO: remove mock by pytest-mock
+    "mock",
+    "pytest>=8.2,<9.1",
     "pytest-cov",
     "pytest-mock",
-    "ruff==0.11.13",
+    "ruff==0.14.13",
     "pytest-xdist",
-    "testcontainers"
+    "testcontainers",
+    "pytest-timeout",
+    "types-requests",
+    "typing_extensions==4.*",
 ]
 docs = [
     "livereload",
-    "pydata-sphinx-theme>=0.15,<0.17",
-    "sphinx>=5,<9",
-    "sphinx-autobuild>=2021.3,<2024.11",
+    "pydata-sphinx-theme>=0.16.1,<0.17",
+    "sphinx>=5,<10",
+    "sphinx-autobuild>=2021.3,<2025.9",
     "sphinx_rtd_theme",
-    "sphinx-reredirects==0.1.*"
+    "sphinx-reredirects>=0.1,<1.2",
+    "sphinx_design",
+    "tomli"
 ]
 all = [
     "autosubmit[tests]",
-    "autosubmit[docs]"
-    # "autosubmit[postgres]"
+    "autosubmit[docs]",
+    "autosubmit[postgres]"
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["autosubmit*"]
+namespaces = true
 
 [tool.setuptools]
 package-data = { "autosubmit" = [
     "autosubmit/config/files/autosubmit.conf",
     "autosubmit/config/files/expdef.conf",
     "autosubmit/database/data/autosubmit.sql",
+    "autosubmit/config/conf/files/*",
     "README",
     "CHANGELOG",
     "VERSION",

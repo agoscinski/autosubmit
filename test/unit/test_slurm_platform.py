@@ -23,10 +23,10 @@ import pytest
 from autosubmit.job.job import Job
 from autosubmit.job.job_common import Status
 from autosubmit.job.job_packages import JobPackageSimple, JobPackageVertical, JobPackageHorizontal
+from autosubmit.log.log import AutosubmitCritical, AutosubmitError
 from autosubmit.platforms.slurmplatform import SlurmPlatform
-from log.log import AutosubmitCritical, AutosubmitError
 
-"""Tests for the Slurm platform."""
+"""Unit tests for the Slurm platform."""
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def test_slurm_platform_submit_script_raises_autosubmit_critical_with_trace(mock
     ]
 
     ae = AutosubmitError(message='invalid partition', code=123, trace='ERR!')
-    platform.submit_Script = mocker.MagicMock(side_effect=ae)
+    platform.submit_script = mocker.MagicMock(side_effect=ae)
 
     # AS will handle the AutosubmitError above, but then raise an AutosubmitCritical.
     # This new error won't contain all the info from the upstream error.
@@ -155,9 +155,9 @@ def test_process_batch_ready_jobs_valid_packages_to_submit(mocker, slurm_platfor
     failed_packages = []
     slurm_platform.get_jobid_by_jobname = mocker.MagicMock()
     slurm_platform.send_command = mocker.MagicMock()
-    slurm_platform.submit_Script = mocker.MagicMock()
+    slurm_platform.submit_script = mocker.MagicMock()
     jobs_id = [1, 2, 3]
-    slurm_platform.submit_Script.return_value = jobs_id
+    slurm_platform.submit_script.return_value = jobs_id
     slurm_platform.process_batch_ready_jobs(valid_packages_to_submit, failed_packages)
     for i, package in enumerate(valid_packages_to_submit):
         for job in package.jobs:

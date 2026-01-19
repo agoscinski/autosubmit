@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2015 Earth Sciences Department, BSC-CNS
+# Copyright 2015-2025 Earth Sciences Department, BSC-CNS
 #
 # This file is part of Autosubmit.
 #
@@ -17,19 +15,21 @@
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Script for handling experiment monitoring"""
+"""Script for handling experiment monitoring."""
+
 import argparse
 import traceback
 from contextlib import suppress
-from os import _exit  # type: ignore
+from os import _exit  #noqa
+# noinspection PyProtectedMember
 from pathlib import Path
 from typing import Optional, Union
 
 from portalocker.exceptions import BaseLockException
 
 from autosubmit.autosubmit import Autosubmit  # noqa: E402
-from autosubmitconfigparser.config.configcommon import AutosubmitConfig  # noqa: E402
-from log.log import Log, AutosubmitCritical, AutosubmitError  # noqa: E402
+from autosubmit.config.configcommon import AutosubmitConfig  # noqa: E402
+from autosubmit.log.log import Log, AutosubmitCritical, AutosubmitError  # noqa: E402
 
 
 def delete_lock_file(base_path: str = Log.file_path, lock_file: str = 'autosubmit.lock') -> None:
@@ -66,8 +66,8 @@ def exit_from_error(e: BaseException) -> int:
     err_code = 1
     trace = traceback.format_exc()
     try:
-        Log.debug(trace)
-    except:
+        Log.critical(trace)
+    except BaseException:
         print(trace)
 
     is_portalocker_error = isinstance(e, BaseLockException)
@@ -80,7 +80,7 @@ def exit_from_error(e: BaseException) -> int:
         delete_lock_file()
 
     if is_autosubmit_error:
-        e: Union[AutosubmitError, AutosubmitCritical] = e  # type: ignore
+        e: Union[AutosubmitError, AutosubmitCritical] = e
         if e.trace:
             Log.debug("Trace: {0}", str(e.trace))
         Log.critical("{1} [eCode={0}]", e.code, e.message)

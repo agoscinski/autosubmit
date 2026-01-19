@@ -17,7 +17,7 @@ You can review all variables at any given time by using the
 .. code-block:: console
     :caption: Example usage of ``autosubmit report``
 
-    $ autosubmit report $expid -all
+    $ autosubmit report <EXPID> -all
 
 The command will save the list of variables available to a file
 in the experiment area. The groups of variables of Autosubmit are
@@ -64,8 +64,8 @@ Custom directives
 -----------------
 
 There are job variables that Autosubmit automatically converts into
-directives for your batch server. For example, ``NUMTHREADS`` will
-be set in a Slurm platform as ``--SBATCH --cpus-per-task=$NUMTHREADS``.
+directives for your batch server. For example, ``THREADS`` will
+be set in a Slurm platform as ``--SBATCH --cpus-per-task=$THREADS``.
 
 However, the variables in Autosubmit do not contain all the directives
 available in each platform like Slurm. For values that do not have a

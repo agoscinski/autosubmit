@@ -1,35 +1,35 @@
-#!/usr/bin/env python3
-# Copyright 2017-2020 Earth Sciences Department, BSC-CNS
-
+# Copyright 2015-2025 Earth Sciences Department, BSC-CNS
+#
 # This file is part of Autosubmit.
-
+#
 # Autosubmit is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-
+#
 # Autosubmit is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
+
+import locale
 import os
 import subprocess
+from time import sleep
 from typing import TYPE_CHECKING
 
-from autosubmit.platforms.paramiko_platform import ParamikoPlatform, ParamikoPlatformException
-from log.log import Log,AutosubmitError
-from autosubmit.platforms.headers.ec_header import EcHeader
+from autosubmit.log.log import Log, AutosubmitError
 from autosubmit.platforms.headers.ec_cca_header import EcCcaHeader
+from autosubmit.platforms.headers.ec_header import EcHeader
 from autosubmit.platforms.headers.slurm_header import SlurmHeader
+from autosubmit.platforms.paramiko_platform import ParamikoPlatform, ParamikoPlatformException
 from autosubmit.platforms.wrappers.wrapper_factory import EcWrapperFactory
-from time import sleep
-import locale
 
 if TYPE_CHECKING:
-    from autosubmitconfigparser.config.configcommon import AutosubmitConfig
+    from autosubmit.config.configcommon import AutosubmitConfig
 
 
 class EcPlatform(ParamikoPlatform):
@@ -42,21 +42,21 @@ class EcPlatform(ParamikoPlatform):
     :type scheduler: str (pbs, loadleveler)
     """
 
-    def parse_Alljobs_output(self, output, job_id):
-        pass
+    def parse_all_jobs_output(self, output, job_id):
+        pass  # pragma: no cover
 
     def parse_queue_reason(self, output, job_id):
-        pass
+        pass  # pragma: no cover
 
-    def get_checkAlljobs_cmd(self, jobs_id):
-        pass
+    def get_check_all_jobs_cmd(self, jobs_id):
+        pass  # pragma: no cover
 
-    def submit_Script(self, hold=False):
-        pass
+    def submit_script(self, hold=False):
+        pass  # pragma: no cover
 
     def __init__(self, expid, name, config, scheduler):
         ParamikoPlatform.__init__(self, expid, name, config)
-        #version=scheduler
+        # version=scheduler
         if scheduler == 'pbs':
             self._header = EcCcaHeader()
         elif scheduler == 'loadleveler':
@@ -71,9 +71,9 @@ class EcPlatform(ParamikoPlatform):
         self.job_status['RUNNING'] = ['EXEC']
         self.job_status['QUEUING'] = ['INIT', 'RETR', 'STDBY', 'WAIT']
         self.job_status['FAILED'] = ['STOP']
-        self._pathdir = "\$HOME/LOG_" + self.expid
+        self._pathdir = "\\$HOME/LOG_" + self.expid
         self._allow_arrays = False
-        self._allow_wrappers = False # TODO
+        self._allow_wrappers = False  # TODO
         self._allow_python_jobs = False
         self.root_dir = ""
         self.remote_log_dir = ""
@@ -108,8 +108,14 @@ class EcPlatform(ParamikoPlatform):
         self.mkdir_cmd = ("ecaccess-file-mkdir " + self.host + ":" + self.scratch + "/" + self.project + "/" +
                           self.user + "/" + self.expid + "; " + "ecaccess-file-mkdir " + self.host + ":" +
                           self.remote_log_dir)
-        self.check_remote_permissions_cmd = "ecaccess-file-mkdir " + self.host+":"+os.path.join(self.scratch,self.project,self.user,"_permission_checker_azxbyc")
-        self.check_remote_permissions_remove_cmd = "ecaccess-file-rmdir " + self.host+":"+os.path.join(self.scratch,self.project,self.user,"_permission_checker_azxbyc")
+        self.check_remote_permissions_cmd = "ecaccess-file-mkdir " + self.host + ":" + os.path.join(self.scratch,
+                                                                                                    self.project,
+                                                                                                    self.user,
+                                                                                                    "_permission_checker_azxbyc")
+        self.check_remote_permissions_remove_cmd = "ecaccess-file-rmdir " + self.host + ":" + os.path.join(self.scratch,
+                                                                                                           self.project,
+                                                                                                           self.user,
+                                                                                                           "_permission_checker_azxbyc")
 
     def get_checkhost_cmd(self):
         return self._checkhost_cmd
@@ -120,12 +126,12 @@ class EcPlatform(ParamikoPlatform):
     def get_mkdir_cmd(self):
         return self.mkdir_cmd
 
-    def set_submit_cmd(self,ec_queue):
+    def set_submit_cmd(self, ec_queue):
         self._submit_cmd = ("ecaccess-job-submit -distant -queueName " + ec_queue + " " + self.host + ":" +
                             self.remote_log_dir + "/")
 
-    def check_Alljobs(self, job_list, as_conf, retries=5):
-        for job,prev_status in job_list:
+    def check_all_jobs(self, job_list, as_conf, retries=5):
+        for job, prev_status in job_list:
             self.check_job(job)
 
     def parse_job_output(self, output):
@@ -136,10 +142,10 @@ class EcPlatform(ParamikoPlatform):
                 return job_state[1]
         return 'DONE'
 
-    def get_submitted_job_id(self, output, x11 = False):
+    def get_submitted_job_id(self, output, x11=False):
         return output
 
-    def get_checkjob_cmd(self, job_id):
+    def get_check_job_cmd(self, job_id):
         return self._checkjob_cmd + str(job_id)
 
     def get_submit_cmd(self, job_script, job, hold=False, export=""):
@@ -204,19 +210,19 @@ class EcPlatform(ParamikoPlatform):
         """
         self.connect(as_conf)
 
-    def check_remote_permissions(self):
+    def check_remote_permissions(self) -> bool:
         try:
             try:
                 subprocess.check_output(self.check_remote_permissions_remove_cmd, shell=False)
-            except Exception as e:
+            except Exception:
                 pass
             subprocess.check_output(self.check_remote_permissions_cmd, shell=True)
             subprocess.check_output(self.check_remote_permissions_remove_cmd, shell=True)
             return True
-        except Exception as e:
+        except Exception:
             return False
 
-    def send_command(self, command, ignore_log=False, x11 = False):
+    def send_command(self, command, ignore_log=False, x11=False) -> bool:
         lang = locale.getlocale()[1] or locale.getdefaultlocale()[1] or 'UTF-8'
         err_message = 'command not executed'
         for _ in range(3):
@@ -231,60 +237,28 @@ class EcPlatform(ParamikoPlatform):
             raise AutosubmitError(f'Could not execute command {command} on {self.host}', 7500, str(err_message))
         return True
 
-
-
-    def send_file(self, filename, check=True):
+    def send_file(self, filename, check=True) -> bool:
         self.check_remote_log_dir()
         self.delete_file(filename)
         command = f'{self.put_cmd} {os.path.join(self.tmp_path, filename)} {self.host}:{os.path.join(self.get_files_path(), os.path.basename(filename))}'
         try:
             subprocess.check_call(command, shell=True)
         except subprocess.CalledProcessError as e:
-            raise AutosubmitError('Could not send file {0} to {1}'.format(os.path.join(self.tmp_path, filename),os.path.join(self.get_files_path(), filename)),6005,str(e))
+            raise AutosubmitError('Could not send file {0} to {1}'.format(os.path.join(self.tmp_path, filename),
+                                                                          os.path.join(self.get_files_path(),
+                                                                                       filename)), 6005, str(e))
         return True
 
-    def move_file(self, src, dest, must_exist = False):
-        command = "ecaccess-file-move {0}:{1} {0}:{2}".format(self.host,os.path.join(self.remote_log_dir,src) , os.path.join(self.remote_log_dir,dest))
+    def move_file(self, src, dest, must_exist=False):
+        command = (f"ecaccess-file-move {self.host}:{os.path.join(self.remote_log_dir, src)} "
+                   f"{self.host}:{os.path.join(self.remote_log_dir, dest)}")
         try:
             retries = 0
             sleeptime = 5
             process_ok = False
             FNULL = open(os.devnull, 'w')
             while not process_ok and retries < 5:
-                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,stderr=FNULL)
-                out, _ = process.communicate()
-                out=out.decode(locale.getlocale()[1])
-                if 'No such file' in out or process.returncode != 0:
-                    retries = retries + 1
-                    process_ok = False
-                    sleeptime = sleeptime + 5
-                    sleep(sleeptime)
-                else:
-                    process_ok = True
-        except Exception as e:
-            process_ok = False
-        if not process_ok:
-            Log.printlog("Log file don't recovered {0}".format(src), 6004)
-        return process_ok
-
-
-    def get_file(self, filename, must_exist=True, relative_path='',ignore_log = False,wrapper_failed=False):
-        local_path = os.path.join(self.tmp_path, relative_path)
-        if not os.path.exists(local_path):
-            os.makedirs(local_path)
-
-        file_path = os.path.join(local_path, filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-        command = '{0} {3}:{2} {1}'.format(self.get_cmd, file_path, os.path.join(self.get_files_path(), filename),self.host)
-        try:
-            retries = 0
-            sleeptime = 5
-            process_ok = False
-            FNULL = open(os.devnull, 'w')
-            while not process_ok and retries < 5:
-                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,stderr=FNULL)
+                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=FNULL)
                 out, _ = process.communicate()
                 out = out.decode(locale.getlocale()[1])
                 if 'No such file' in out or process.returncode != 0:
@@ -294,7 +268,40 @@ class EcPlatform(ParamikoPlatform):
                     sleep(sleeptime)
                 else:
                     process_ok = True
-        except Exception as e:
+        except Exception:
+            process_ok = False
+        if not process_ok:
+            Log.printlog("Log file don't recovered {0}".format(src), 6004)
+        return process_ok
+
+    def get_file(self, filename, must_exist=True, relative_path='', ignore_log=False, wrapper_failed=False):
+        local_path = os.path.join(self.tmp_path, relative_path)
+        if not os.path.exists(local_path):
+            os.makedirs(local_path)
+
+        file_path = os.path.join(local_path, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        command = '{0} {3}:{2} {1}'.format(self.get_cmd, file_path, os.path.join(self.get_files_path(), filename),
+                                           self.host)
+        try:
+            retries = 0
+            sleeptime = 5
+            process_ok = False
+            FNULL = open(os.devnull, 'w')
+            while not process_ok and retries < 5:
+                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=FNULL)
+                out, _ = process.communicate()
+                out = out.decode(locale.getlocale()[1])
+                if 'No such file' in out or process.returncode != 0:
+                    retries = retries + 1
+                    process_ok = False
+                    sleeptime = sleeptime + 5
+                    sleep(sleeptime)
+                else:
+                    process_ok = True
+        except Exception:
             process_ok = False
         if not process_ok and must_exist:
             Log.printlog("Completed/Stat File don't recovered {0}".format(filename), 6004)
@@ -302,20 +309,22 @@ class EcPlatform(ParamikoPlatform):
             Log.printlog("Log file don't recovered {0}".format(filename), 6004)
         return process_ok
 
-    def delete_file(self, filename):
+    def delete_file(self, filename: str) -> bool:
         command = '{0} {1}:{2}'.format(self.del_cmd, self.host, os.path.join(self.get_files_path(), filename))
         try:
             FNULL = open(os.devnull, 'w')
-            subprocess.check_call(command, stdout=FNULL,stderr=FNULL, shell=True)
+            subprocess.check_call(command, stdout=FNULL, stderr=FNULL, shell=True)
         except subprocess.CalledProcessError:
-            Log.debug('Could not remove file {0}',os.path.join(self.get_files_path(), filename) )
+            Log.debug('Could not remove file {0}', os.path.join(self.get_files_path(), filename))
             return False
         return True
 
     def get_ssh_output(self):
         return self._ssh_output
+
     def get_ssh_output_err(self):
         return self._ssh_output_err
+
     @staticmethod
     def wrapper_header(filename, queue, project, wallclock, num_procs, expid, dependency, rootdir, directives):
         return """\

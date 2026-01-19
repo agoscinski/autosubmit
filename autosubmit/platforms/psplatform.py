@@ -1,46 +1,31 @@
-#!/usr/bin/env python3
-
-# Copyright 2017-2020 Earth Sciences Department, BSC-CNS
-
+# Copyright 2015-2025 Earth Sciences Department, BSC-CNS
+#
 # This file is part of Autosubmit.
-
+#
 # Autosubmit is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-
+#
 # Autosubmit is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with Autosubmit.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 
-from autosubmit.platforms.paramiko_platform import ParamikoPlatform
+from autosubmit.log.log import Log
 from autosubmit.platforms.headers.ps_header import PsHeader
+from autosubmit.platforms.paramiko_platform import ParamikoPlatform
 
 
 class PsPlatform(ParamikoPlatform):
-    """
-    Class to manage jobs to host not using any scheduler
+    """Class to manage jobs to host not using any scheduler."""
 
-    :param expid: experiment's identifier
-    :type expid: str
-    """
-
-    def get_checkAlljobs_cmd(self, jobs_id):
-        pass
-
-    def parse_Alljobs_output(self, output, job_id):
-        pass
-
-    def parse_queue_reason(self, output, job_id):
-        pass
-
-    def __init__(self, expid, name, config):
+    def __init__(self, expid: str, name: str, config: dict):
         ParamikoPlatform.__init__(self, expid, name, config)
         self.mkdir_checker = None
         self.remove_checker = None
@@ -48,6 +33,7 @@ class PsPlatform(ParamikoPlatform):
         self.get_cmd = None
         self.put_cmd = None
         self._checkhost_cmd = None
+        self.type = 'ps'
         self.cancel_cmd = None
         self._header = PsHeader()
         self.job_status = dict()
@@ -57,16 +43,23 @@ class PsPlatform(ParamikoPlatform):
         self.job_status['FAILED'] = []
         self.update_cmds()
 
+    def get_check_all_jobs_cmd(self, jobs_id):
+        pass  # pragma: no cover
+
+    def parse_all_jobs_output(self, output, job_id):
+        pass  # pragma: no cover
+
+    def parse_queue_reason(self, output, job_id):
+        pass  # pragma: no cover
+
     def create_a_new_copy(self):
         return PsPlatform(self.expid, self.name, self.config)
 
-    def submit_Script(self, hold=False):
-        pass
+    def submit_script(self, hold=False):
+        pass  # pragma: no cover
 
     def update_cmds(self):
-        """
-        Updates commands for platforms
-        """
+        """Updates commands for platforms."""
         self.root_dir = os.path.join(self.scratch, self.project_dir, self.user, self.expid)
         self.remote_log_dir = os.path.join(self.root_dir, "LOG_" + self.expid)
         self.cancel_cmd = "kill -SIGINT"
@@ -74,8 +67,10 @@ class PsPlatform(ParamikoPlatform):
         self.put_cmd = "scp"
         self.get_cmd = "scp"
         self.mkdir_cmd = "mkdir -p " + self.remote_log_dir
-        self.remove_checker = "rm -rf " + os.path.join(self.scratch, self.project_dir,self.user,"ps_permission_checker_azxbyc")
-        self.mkdir_checker = "mkdir -p " + os.path.join(self.scratch, self.project_dir,self.user,"ps_permission_checker_azxbyc")
+        self.remove_checker = "rm -rf " + os.path.join(self.scratch, self.project_dir, self.user,
+                                                       "ps_permission_checker_azxbyc")
+        self.mkdir_checker = "mkdir -p " + os.path.join(self.scratch, self.project_dir, self.user,
+                                                        "ps_permission_checker_azxbyc")
 
     def get_checkhost_cmd(self):
         return self._checkhost_cmd
@@ -89,7 +84,7 @@ class PsPlatform(ParamikoPlatform):
     def parse_job_output(self, output):
         return output
 
-    def get_submitted_job_id(self, output, x11 = False):
+    def get_submitted_job_id(self, output, x11=False):
         return output
 
     def get_submit_cmd(self, job_script, job, hold=False, export=""):
@@ -99,21 +94,23 @@ class PsPlatform(ParamikoPlatform):
             export += " ; "
         return self.get_call(job_script, job, export=export, timeout=job.wallclock_in_seconds)
 
-    def get_checkjob_cmd(self, job_id):
+    def get_check_job_cmd(self, job_id):
         return self.get_pscall(job_id)
 
-    def check_Alljobs(self, job_list, as_conf, retries=5):
-        for job,prev_status in job_list:
+    def check_all_jobs(self, job_list, as_conf, retries=5):
+        for job, prev_status in job_list:
             self.check_job(job)
 
-    def check_remote_permissions(self):
+    def check_remote_permissions(self) -> bool:
         try:
             try:
                 self.send_command(self.remove_checker)
             except Exception as e:
-                pass
+                Log.debug(f'Failed to send command to remove checker files: {e}')
             self.send_command(self.mkdir_checker)
             self.send_command(self.remove_checker)
             return True
         except Exception as e:
-            return False
+            Log.debug(f'Failed to check remote dependencies for PS platform: {e}')
+
+        return False

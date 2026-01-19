@@ -1,15 +1,3 @@
-import csv
-import os
-import re
-import shlex
-import subprocess
-import sys
-
-from pathlib import Path
-
-from docutils.parsers.rst import directives
-from sphinx.directives import code
-
 # This code is adapted from CWL User Guide, licensed under
 # the CC BY 4.0 license, quoting their license:
 #
@@ -19,13 +7,25 @@ from sphinx.directives import code
 # linking to https://www.commonwl.org/ ),...
 # Ref: https://github.com/common-workflow-language/user_guide/blob/8abf537144d7b63c3561c1ff2b660543effd0eb0/LICENSE.md
 
-""""
-Patched version of https://github.com/sphinx-contrib/sphinxcontrib-runcmd
+import csv
+import os
+import re
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+from typing import Optional
+
+from docutils import nodes
+from docutils.nodes import Node
+from docutils.parsers.rst import directives
+from sphinx.directives import code
+
+"""Patched version of https://github.com/sphinx-contrib/sphinxcontrib-runcmd
 with default values to avoid having to re-type in every page. Also
 prepends commands with a value (``$``), see https://github.com/invenia/sphinxcontrib-runcmd/issues/1.
 Finally, it also checks if the command is ``cwltool``, and if then
-tries to remove any paths from the command-line (not the logs).
-"""
+tries to remove any paths from the command-line (not the logs)."""
 
 __version__ = "0.2.0"
 
@@ -35,7 +35,7 @@ RE_SPLIT = re.compile(r"(?P<pattern>.*)(?<!\\)/(?P<replacement>.*)")
 
 # These classes were in the .util module of the original directive.
 class _Singleton(type):
-    _instances = {}
+    _instances: dict = {}
 
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
@@ -43,19 +43,19 @@ class _Singleton(type):
         return cls._instances[cls]
 
 
-class Singleton(_Singleton("SingletonMeta", (object,), {})):
-    pass
+class Singleton(_Singleton("SingletonMeta", (object,), {})):  # type: ignore
+    pass  # pragma: no cover
 
 
 class CMDCache(Singleton):
-    cache = {}
+    cache: dict = {}
     exclude_cache_cmd = {hash("cat output.txt")}
 
-    def get(self, cmd, working_directory):
+    def get(self, cmd, working_directory, cache):
         h = hash(cmd)
         if h in self.exclude_cache_cmd:
             return run_command(cmd, working_directory)
-        elif h in self.cache:
+        elif h in self.cache and cache:
             return self.cache[h]
         else:
             result = run_command(cmd, working_directory)
@@ -111,7 +111,7 @@ class RunCmdDirective(code.CodeBlock):
     required_arguments = 1
     optional_arguments = 99
 
-    option_spec = {
+    option_spec = {  # type: ignore
         # code.CodeBlock option_spec
         "linenos": directives.flag,
         "dedent": int,
@@ -124,11 +124,13 @@ class RunCmdDirective(code.CodeBlock):
         "syntax": directives.unchanged,
         "replace": directives.unchanged,
         "prompt": directives.flag,
+        "cache": directives.flag,
+        "silent-output": int,
         "dedent-output": int,
-        "working-directory": directives.unchanged
+        "working-directory": directives.unchanged,
     }
 
-    def run(self):
+    def run(self) -> list[Node]:
         # Grab a cache singleton instance
         cache = CMDCache()
 
@@ -137,7 +139,7 @@ class RunCmdDirective(code.CodeBlock):
         # allow the directive to receive a working directory, so that we
         # change to that working directory before running the desired command.
         # The working directory is omitted from the final output.
-        working_directory = self.options.get('working-directory', 'source/')
+        working_directory = self.options.get('working-directory', '')
         if working_directory == '':
             # subprocess default value, so that we can disable it if needed.
             working_directory = None
@@ -150,42 +152,47 @@ class RunCmdDirective(code.CodeBlock):
 
         # Get the command output
         command = " ".join(self.arguments)
-        output = cache.get(command, working_directory)
+        output = cache.get(command, working_directory, self.options.get('cache', False))
 
         # Grab our custom commands
-        syntax = self.options.get("syntax", "bash")
+        syntax = self.options.get("syntax", "console")
         replace = self.options.get("replace", '')
         reader = csv.reader([replace], delimiter=",", escapechar="\\")
         # prompt = "prompt" in self.options
         # We patched this so that the prompt is displayed by default, similar
         # to how ``{code-block} console`` works.
-        prompt = True
+        silent_output = self.options.get("silent-output", 0)
         dedent_output = self.options.get("dedent-output", 0)
 
         # Dedent the output if required
         if dedent_output > 0:
             output = "\n".join([x[dedent_output:] for x in output.split("\n")])
 
+        # silence the output if required
+        if silent_output > 0:
+            return [nodes.Text('')]
+
         # Add the prompt to our output if required
-        if prompt:
-            output = "$ {}\n{}".format(command, output)
+        if 'prompt' not in self.options:
+            output = f"$ {command}\n\nOutput:\n{output}"
 
         # Do our "replace" syntax on the command output
         for items in reader:
             for regex in items:
                 if regex != "":
-                    match = RE_SPLIT.match(regex)
-                    p = match.group("pattern")
+                    match: Optional[re.Match[str]] = RE_SPLIT.match(regex)
+                    p = match.group("pattern")  # type: ignore
                     # Let's unescape the escape chars here as we don't need them to be
                     # escaped in the replacement at this point
-                    r = match.group("replacement").replace("\\", "")
+                    r = match.group("replacement").replace("\\", "")  # type: ignore
                     output = re.sub(p, r, output)
 
         # Note: Sphinx's CodeBlock directive expects an array of command-line
-        #       output lines: https://github.com/sphinx-doc/sphinx/blob/c51a88da8b7b40e8d8cbdb1fce85ca2346b2b59a/sphinx/directives/code.py#L114
+        #       output lines:
+        #       https://github.com/sphinx-doc/sphinx/blob/c51a88da8b7b40e8d8cbdb1fce85ca2346b2b59a/sphinx/directives/code.py#L114
         #       But the runcmd original code was simply wrapping a string
         #       containing \n in the text as a one-element array, e.g.
-        #       ["cwltool --debug ...\ncwltool Version..."].
+        #       ["cwltool --debug ...cwltool Version..."].
         #       That caused the output to be correctly rendered, but the
         #       emphasize-lines directive parameter to fail if the lines were
         #       anything greater than 0 (as the self.content array had 1 elem).
@@ -194,6 +201,7 @@ class RunCmdDirective(code.CodeBlock):
 
         # Set up our arguments to run the CodeBlock parent run function
         self.arguments[0] = syntax
+        # noinspection PyAttributeOutsideInit
         self.content = output
         node = super(RunCmdDirective, self).run()
 

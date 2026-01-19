@@ -2,7 +2,7 @@
 This test checks that the autosubmit report command works as expected.
 It is a regression test, so it is not run by default.
 It only run within my home desktop computer. It is not run in the CI. Eventually it will be included TODO
-Just to be sure that the autosubmitconfigparser work as expected if there are changes.
+Just to be sure that the autosubmit.config work as expected if there are changes.
 """
 
 import subprocess
@@ -21,7 +21,7 @@ def check_cmd(command, path=BIN_PATH):
     return output, error
 
 def report_test(expid):
-    output = check_cmd("autosubmit report {0} -all -v".format(expid))
+    output = check_cmd(f"autosubmit report {expid} -all -v")
     return output
 def perform_test(expid):
 
